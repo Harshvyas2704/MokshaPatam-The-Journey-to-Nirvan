@@ -11,6 +11,7 @@ import { StyleSheet, View } from 'react-native';
 import { SoulTokenLayer } from '@/features/player';
 import type { BoardLayout } from '../types';
 import { BoardCellView } from './BoardCellView';
+import { SnakesLaddersLayer } from './SnakesLaddersLayer';
 
 interface BoardCanvasProps {
   layout: BoardLayout;
@@ -29,7 +30,9 @@ const BoardCanvasComponent: React.FC<BoardCanvasProps> = ({ layout }) => {
       {layout.positionedCells.map(cell => (
         <BoardCellView key={cell.id} cell={cell} />
       ))}
-      {/* The soul token rides on top of the cells, within the same transform. */}
+      {/* Snakes & ladders sit above the cells, below the soul token. */}
+      <SnakesLaddersLayer layout={layout} />
+      {/* The soul token rides on top, within the same transform. */}
       <SoulTokenLayer layout={layout} />
     </View>
   );

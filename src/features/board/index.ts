@@ -7,5 +7,6 @@
 export * from './types';
 export * from './layout';
 export * from './zoom';
+export * from './svg';
 export * from './components';
 export { useBoardLayout } from './hooks/useBoardLayout';

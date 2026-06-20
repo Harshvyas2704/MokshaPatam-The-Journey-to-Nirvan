@@ -67,6 +67,11 @@ export function computeBoardDimensions(
   };
 }
 
+/** The pixel center of a positioned cell. */
+export function getCellCenter(cell: PositionedCell): { x: number; y: number } {
+  return { x: cell.x + cell.size / 2, y: cell.y + cell.size / 2 };
+}
+
 /** Resolve each cell to absolute pixel coordinates within the board. */
 export function layoutCells(
   cells: BoardCell[],
