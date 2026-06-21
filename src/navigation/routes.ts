@@ -17,5 +17,5 @@ export const ROUTES = {
 export const routeTitles: Record<RouteName, string> = {
   Home: 'Mokshapat',
   Instructions: 'Game Introduction',
-  Game: 'Journey to Nirvan',
+  Game: 'Journey to Moksh',
 };

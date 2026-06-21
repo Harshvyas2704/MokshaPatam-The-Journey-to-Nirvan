@@ -1,4 +1,4 @@
-# Mokshapat — Journey to Nirvan
+# Mokshapat — Journey to Moksh
 
 A faithful, premium digital recreation of **Mokshapat** (also called _Kaivalyapat_, "The Chart of Liberation") — the ancient Indian spiritual board game in the tradition of Saint Dnyaneshwar, and the philosophical ancestor of modern Snakes & Ladders.
 

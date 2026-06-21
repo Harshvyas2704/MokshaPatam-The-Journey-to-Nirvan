@@ -31,7 +31,7 @@ const GameScreen: React.FC<RootStackScreenProps<'Game'>> = ({ navigation }) => {
           accessibilityLabel="Return home">
           <Text style={styles.backLabel}>Back</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Journey to Nirvan</Text>
+        <Text style={styles.title}>Journey to Moksh</Text>
         <View style={styles.backButtonSpacer} />
       </View>
 

@@ -19,7 +19,7 @@ const HomeScreen: React.FC<RootStackScreenProps<'Home'>> = ({ navigation }) => {
   return (
     <SafeAreaView style={styles.container}>
       <Text style={styles.title}>Mokshapat</Text>
-      <Text style={styles.subtitle}>Journey to Nirvan</Text>
+      <Text style={styles.subtitle}>Journey to Moksh</Text>
 
       <TouchableOpacity
         style={styles.button}
