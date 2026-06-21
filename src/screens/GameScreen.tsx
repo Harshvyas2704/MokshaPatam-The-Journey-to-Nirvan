@@ -10,6 +10,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BoardRenderer } from '@/features/board';
 import { GameControls } from '@/features/game';
+import { SpiritualEventLayer } from '@/features/moksha';
 import type { RootStackScreenProps } from '@/types';
 import { colors, radius, spacing, typography } from '@/constants';
 
@@ -39,6 +40,9 @@ const GameScreen: React.FC<RootStackScreenProps<'Game'>> = ({ navigation }) => {
       </View>
 
       <GameControls />
+
+      {/* Presents snake / ladder / concept / moksha events over everything. */}
+      <SpiritualEventLayer />
     </SafeAreaView>
   );
 };

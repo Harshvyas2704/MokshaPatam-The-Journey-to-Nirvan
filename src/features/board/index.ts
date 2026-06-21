@@ -10,3 +10,4 @@ export * from './zoom';
 export * from './svg';
 export * from './components';
 export { useBoardLayout } from './hooks/useBoardLayout';
+export { useFollowSoul } from './hooks/useFollowSoul';

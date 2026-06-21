@@ -25,6 +25,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { BOARD_ZOOM, colors } from '@/constants';
 import { useBoardLayout } from '../hooks/useBoardLayout';
+import { useFollowSoul } from '../hooks/useFollowSoul';
 import type { ContainerSize } from '../types';
 import { computeMinScale, getBottomAlignedTranslateY } from '../zoom';
 import { BoardCanvas } from './BoardCanvas';
@@ -89,6 +90,16 @@ const BoardRenderer: React.FC = () => {
     translateY.value = initialY;
     savedTranslateY.value = initialY;
   }, [layout, boardHeight, viewportHeight, translateY, savedTranslateY]);
+
+  // Keep the moving soul in view by gliding the pan offset along its path.
+  useFollowSoul({
+    layout,
+    scale,
+    translateX,
+    translateY,
+    viewportWidth,
+    viewportHeight,
+  });
 
   const gesture = useMemo(() => {
     const { maxScale, doubleTapScale } = BOARD_ZOOM;
