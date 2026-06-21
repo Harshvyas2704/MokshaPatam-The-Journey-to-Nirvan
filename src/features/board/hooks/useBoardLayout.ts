@@ -16,6 +16,7 @@ export function useBoardLayout(container: ContainerSize): BoardLayout | null {
     if (width <= 0 || height <= 0) {
       return null;
     }
-    return computeBoardLayout(boardCells, { width, height });
+    // Cell size is fixed; the container size only gates readiness.
+    return computeBoardLayout(boardCells);
   }, [width, height]);
 }

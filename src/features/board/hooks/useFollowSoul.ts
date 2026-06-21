@@ -11,11 +11,13 @@
 import { useEffect, useMemo, useRef } from 'react';
 import {
   Easing,
+  useReducedMotion,
   withSequence,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 import { SOUL_MOVEMENT } from '@/constants';
+import { positionKey } from '@/data';
 import { useGameStore } from '@/store';
 import { getMovePath } from '@/features/game/logic/movement';
 import { getCellCenter } from '../layout';
@@ -47,13 +49,17 @@ export function useFollowSoul({
   const lastMove = useGameStore(state => state.lastMove);
   const totalRolls = useGameStore(state => state.totalRolls);
   const followedRollId = useRef<number | null>(null);
+  const reduceMotion = useReducedMotion();
 
-  // Square id -> board-local center, rebuilt only when the layout changes.
+  // Position key (square id / realm / janmasthan) -> board-local center.
   const centers = useMemo(() => {
-    const map = new Map<number, Point>();
+    const map = new Map<string | number, Point>();
     if (layout) {
       for (const cell of layout.positionedCells) {
         map.set(cell.id, getCellCenter(cell));
+      }
+      for (const oc of layout.offboardCells) {
+        map.set(oc.key, getCellCenter(oc));
       }
     }
     return map;
@@ -67,10 +73,12 @@ export function useFollowSoul({
       return;
     }
     const targets = getMovePath(lastMove)
-      .map(id => centers.get(id))
+      .map(p => centers.get(positionKey(p)))
       .filter((p): p is Point => p !== undefined);
     if (targets.length === 0) {
-      return; // centers not ready yet; re-runs when they are
+      // Blocked move (or centers not ready). Mark handled so we don't loop.
+      followedRollId.current = totalRolls;
+      return;
     }
     followedRollId.current = totalRolls;
 
@@ -102,6 +110,15 @@ export function useFollowSoul({
           };
 
     const offsets = targets.map(offsetFor);
+
+    // Reduced Motion: jump straight to the final framing, no glide.
+    if (reduceMotion) {
+      const last = offsets[offsets.length - 1];
+      translateX.value = last.x;
+      translateY.value = last.y;
+      return;
+    }
+
     translateX.value = withSequence(
       ...offsets.map((o, i) => withTiming(o.x, timing(i))),
     );
@@ -118,5 +135,6 @@ export function useFollowSoul({
     translateY,
     viewportWidth,
     viewportHeight,
+    reduceMotion,
   ]);
 }

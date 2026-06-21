@@ -4,23 +4,26 @@
  * Drives the soul token's animated position. The store commits the logical
  * result of a move immediately and records it as `lastMove`; this hook plays the
  * VISUAL journey: it animates the token square-by-square along the move's walk
- * path (including the bounce off the goal), then performs the snake/ladder jump
- * as a final, longer eased segment — never teleporting.
+ * path, then performs the snake/ladder/realm jump as a final eased segment —
+ * never teleporting.
  *
- * Returns an animated style that positions the token's box so its center sits on
- * the current cell center. Clears `isMoving` when the sequence finishes.
+ * Positions can be numbered squares OR off-board realms (incl. janmasthan), so
+ * the center map is keyed by the position key. Clears `isMoving` when done
+ * (including blocked moves that don't animate at all).
  */
 import { useEffect, useMemo, useRef } from 'react';
 import {
   Easing,
   runOnJS,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withSequence,
   withTiming,
   type AnimatedStyle,
 } from 'react-native-reanimated';
 import { SOUL_MOVEMENT } from '@/constants';
+import { positionKey } from '@/data';
 import { useGameStore } from '@/store';
 import { getMovePath } from '@/features/game/logic/movement';
 import type { BoardLayout } from '@/features/board/types';
@@ -36,52 +39,76 @@ export function useSoulMovement(
   boxSize: number,
 ): AnimatedStyle {
   const currentSquare = useGameStore(state => state.currentSquare);
+  const realm = useGameStore(state => state.realm);
   const lastMove = useGameStore(state => state.lastMove);
   const totalRolls = useGameStore(state => state.totalRolls);
   const setMoving = useGameStore(state => state.setMoving);
+  const reduceMotion = useReducedMotion();
 
-  // Square id -> pixel center, rebuilt only when the layout changes.
+  // Position key (square id, realm string, or JANMASTHAN) -> pixel center.
   const centers = useMemo(() => {
-    const map = new Map<number, Point>();
+    const map = new Map<string | number, Point>();
     for (const cell of layout.positionedCells) {
       const c = getSoulCenter(cell);
       map.set(cell.id, { x: c.centerX, y: c.centerY });
     }
+    for (const oc of layout.offboardCells) {
+      map.set(oc.key, { x: oc.x + oc.size / 2, y: oc.y + oc.size / 2 });
+    }
     return map;
   }, [layout]);
 
-  // Start the token at the current cell (correct on first render / reset).
-  const start = centers.get(currentSquare);
+  const posKey = positionKey(realm ?? currentSquare);
+  const start = centers.get(posKey);
   const translateX = useSharedValue(start ? start.x : 0);
   const translateY = useSharedValue(start ? start.y : 0);
   const animatedRollId = useRef<number | null>(null);
 
-  // Snap to the current square when idle (no pending move) — e.g. after reset.
+  // Snap to the current position when idle (no pending move) — e.g. after reset.
   useEffect(() => {
     if (lastMove) {
       return;
     }
-    const center = centers.get(currentSquare);
+    const center = centers.get(posKey);
     if (center) {
       translateX.value = center.x;
       translateY.value = center.y;
     }
     animatedRollId.current = null;
-  }, [lastMove, centers, currentSquare, translateX, translateY]);
+  }, [lastMove, centers, posKey, translateX, translateY]);
 
   // Play the walk + jump whenever a new move is recorded.
   useEffect(() => {
     if (!lastMove || animatedRollId.current === totalRolls) {
       return;
     }
-    const from = centers.get(lastMove.from);
-    const targets = getMovePath(lastMove)
-      .map(id => centers.get(id))
-      .filter((p): p is Point => p !== undefined);
-    if (!from || targets.length === 0) {
+    const from = centers.get(positionKey(lastMove.from));
+    if (!from) {
       return; // centers not ready yet; re-runs when they are
     }
+    const rawPath = getMovePath(lastMove);
+    const targets = rawPath
+      .map(p => centers.get(positionKey(p)))
+      .filter((p): p is Point => p !== undefined);
+    if (rawPath.length > 0 && targets.length !== rawPath.length) {
+      return; // some centers missing — wait until ready
+    }
     animatedRollId.current = totalRolls;
+
+    // Blocked move (overshoot / stuck on the grave): nothing to animate.
+    if (targets.length === 0) {
+      setMoving(false);
+      return;
+    }
+
+    // Reduced Motion: snap straight to the final position.
+    if (reduceMotion) {
+      const last = targets[targets.length - 1];
+      translateX.value = last.x;
+      translateY.value = last.y;
+      setMoving(false);
+      return;
+    }
 
     translateX.value = from.x;
     translateY.value = from.y;
@@ -115,7 +142,15 @@ export function useSoulMovement(
         ),
       ),
     );
-  }, [lastMove, totalRolls, centers, setMoving, translateX, translateY]);
+  }, [
+    lastMove,
+    totalRolls,
+    centers,
+    setMoving,
+    translateX,
+    translateY,
+    reduceMotion,
+  ]);
 
   return useAnimatedStyle(() => ({
     transform: [

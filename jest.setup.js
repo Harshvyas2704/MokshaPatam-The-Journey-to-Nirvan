@@ -9,9 +9,12 @@ require('react-native-gesture-handler/jestSetup');
 jest.mock('react-native-worklets', () =>
   require('react-native-worklets/src/mock'),
 );
-jest.mock('react-native-reanimated', () =>
-  require('react-native-reanimated/mock'),
-);
+jest.mock('react-native-reanimated', () => {
+  const Reanimated = require('react-native-reanimated/mock');
+  // The mock omits useReducedMotion; default it to "off" for tests.
+  Reanimated.useReducedMotion = () => false;
+  return Reanimated;
+});
 
 // Use safe-area-context's official jest mock so the safe-area contexts stay
 // intact (React Navigation reads them) while rendering synchronously in tests.

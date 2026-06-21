@@ -1,28 +1,24 @@
 /**
  * Game store (Zustand).
  *
- * Phase 5 implements the gameplay rules: dice rolling, exact-landing with
- * bounce-back, and snake/ladder resolution, plus auto-play. The store holds
- * STATE and orchestration; the actual math lives in the pure logic modules
- * (`@/features/game/logic`), which the store imports directly (no cycle).
+ * Holds STATE and orchestration; the move math lives in the pure logic modules
+ * (`@/features/game/logic`). The soul's position is `realm ?? currentSquare`
+ * (0 = janmasthan). Movement is faithful to the reference: enter from
+ * janmasthan, no bounce-back, snakes/ladders that lead into realms, and
+ * realm-escape rules.
  *
- * The token currently snaps to the resolved square; Phase 6 adds the animated
- * square-by-square walk using `MoveResult.steps`.
+ * The store commits the resolved result immediately; the movement layer replays
+ * the animation and clears `isMoving` when it finishes.
  */
 import { create } from 'zustand';
-import type { GameState } from '@/types';
-import { GOAL_SQUARE, START_SQUARE } from '@/constants';
-import {
-  ladderMap,
-  resolveMove,
-  rollDie,
-  snakeMap,
-} from '@/features/game/logic';
+import type { GameState, Position } from '@/types';
+import { isDeathRealm, JANMASTHAN } from '@/data';
+import { resolveMove, rollDie } from '@/features/game/logic';
 
-/** The initial, freshly-born game state. */
+/** The initial, freshly-born game state (at janmasthan). */
 export const initialGameState: GameState = {
-  currentSquare: START_SQUARE,
-  previousSquare: null,
+  currentSquare: JANMASTHAN,
+  realm: null,
   diceValue: null,
   isRolling: false,
   isMoving: false,
@@ -32,20 +28,20 @@ export const initialGameState: GameState = {
   totalRolls: 0,
   snakesEncountered: 0,
   laddersClimbed: 0,
+  narakCount: 0,
+  deaths: 0,
+  rebirths: 0,
+  mrutyuRollCount: 0,
   moveHistory: [],
 };
 
 /** Actions exposed by the game store. */
 export interface GameActions {
-  /** Reset the session back to the initial state. */
   reset: () => void;
-  /** Roll the dice once and apply the resulting move. */
   rollDice: () => void;
   /** Resolve and apply a move for a specific dice value (deterministic). */
   applyMove: (dice: number) => void;
-  /** Start/stop auto-play. */
   setAutoPlay: (active: boolean) => void;
-  /** Set whether the token is mid-animation (called by the movement layer). */
   setMoving: (moving: boolean) => void;
 }
 
@@ -61,35 +57,48 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (state.gameStatus === 'won') {
       return;
     }
-    const result = resolveMove(
-      state.currentSquare,
-      dice,
-      GOAL_SQUARE,
-      snakeMap,
-      ladderMap,
-    );
+    const position: Position = state.realm ?? state.currentSquare;
+    const resolved = resolveMove(position, dice, state.mrutyuRollCount);
+    const { move } = resolved;
+
+    // Derive the new resting place from the move's final position.
+    const landedNumeric = typeof move.to === 'number';
+    const currentSquare = landedNumeric
+      ? (move.to as number)
+      : state.currentSquare;
+    const realm = landedNumeric ? null : (move.to as string);
+
+    // Death: the soul reaches a death realm it wasn't already in.
+    const died =
+      typeof move.to === 'string' &&
+      isDeathRealm(move.to) &&
+      move.from !== move.to;
+    // Rebirth: the soul returns to janmasthan (0) from somewhere else.
+    const reborn = move.to === JANMASTHAN && move.from !== JANMASTHAN;
 
     set(s => ({
       diceValue: dice,
-      previousSquare: s.currentSquare,
-      currentSquare: result.to,
-      lastMove: result,
+      currentSquare,
+      realm,
+      lastMove: move,
       // The movement layer plays the animation and clears this when done.
       isMoving: true,
       totalRolls: s.totalRolls + 1,
-      snakesEncountered:
-        s.snakesEncountered + (result.outcome === 'snake' ? 1 : 0),
-      laddersClimbed:
-        s.laddersClimbed + (result.outcome === 'ladder' ? 1 : 0),
-      gameStatus: result.to === GOAL_SQUARE ? 'won' : 'playing',
+      snakesEncountered: s.snakesEncountered + resolved.snake,
+      laddersClimbed: s.laddersClimbed + resolved.ladder,
+      narakCount: s.narakCount + resolved.narak,
+      deaths: s.deaths + (died ? 1 : 0),
+      rebirths: s.rebirths + (reborn ? 1 : 0),
+      mrutyuRollCount: resolved.mrutyuRollCount,
+      gameStatus: resolved.won ? 'won' : 'playing',
       moveHistory: [
         ...s.moveHistory,
         {
           id: s.totalRolls + 1,
-          from: result.from,
-          to: result.to,
+          from: move.from,
+          to: move.to,
           dice,
-          outcome: result.outcome,
+          outcome: move.outcome,
           timestamp: Date.now(),
         },
       ],
@@ -106,7 +115,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setAutoPlay: (active: boolean) =>
     set(s => ({
-      // Can't auto-play a finished game.
       isAutoPlaying: active && s.gameStatus !== 'won',
     })),
 

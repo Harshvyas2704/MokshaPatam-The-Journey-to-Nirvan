@@ -19,6 +19,7 @@ import Animated, {
   Easing,
   interpolate,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withRepeat,
@@ -102,8 +103,15 @@ interface SoulTokenProps {
 const SoulTokenComponent: React.FC<SoulTokenProps> = ({ cellSize }) => {
   const breath = useSharedValue(0);
   const float = useSharedValue(0);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
+    // Reduced Motion: hold a calm, static orb (no breathing / floating loop).
+    if (reduceMotion) {
+      breath.value = 1; // full brightness
+      float.value = 0.5; // centered (no vertical drift)
+      return;
+    }
     breath.value = withRepeat(
       withTiming(1, {
         duration: SOUL_TOKEN.pulseDurationMs,
@@ -124,7 +132,7 @@ const SoulTokenComponent: React.FC<SoulTokenProps> = ({ cellSize }) => {
       cancelAnimation(breath);
       cancelAnimation(float);
     };
-  }, [breath, float]);
+  }, [breath, float, reduceMotion]);
 
   const sizes = useMemo(() => {
     const aura = cellSize * SOUL_TOKEN.auraRatio;
@@ -179,16 +187,20 @@ const SoulTokenComponent: React.FC<SoulTokenProps> = ({ cellSize }) => {
   return (
     <View
       style={[styles.wrapper, { width: sizes.box, height: sizes.box }]}
-      pointerEvents="none">
+      pointerEvents="none"
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants">
       <Animated.View style={[styles.fill, floatStyle]}>
-        {Array.from({ length: SOUL_TOKEN.ringCount }, (_, i) => (
-          <Halo
-            key={i}
-            box={sizes.box}
-            diameter={sizes.aura}
-            delay={(i * SOUL_TOKEN.ringDurationMs) / SOUL_TOKEN.ringCount}
-          />
-        ))}
+        {reduceMotion
+          ? null
+          : Array.from({ length: SOUL_TOKEN.ringCount }, (_, i) => (
+              <Halo
+                key={i}
+                box={sizes.box}
+                diameter={sizes.aura}
+                delay={(i * SOUL_TOKEN.ringDurationMs) / SOUL_TOKEN.ringCount}
+              />
+            ))}
 
         <Animated.View style={[styles.fill, glowStyle]}>
           {glowLayers.map((layer, i) => (
@@ -233,7 +245,7 @@ const styles = StyleSheet.create({
   core: {
     backgroundColor: colors.soul,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.moksha,
+    borderColor: colors.soulAura,
     // Soft bloom around the core (iOS shadow + Android elevation).
     shadowColor: colors.soul,
     shadowOffset: { width: 0, height: 0 },

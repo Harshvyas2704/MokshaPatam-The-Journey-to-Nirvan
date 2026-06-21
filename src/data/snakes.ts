@@ -1,27 +1,97 @@
-/**
- * PLACEHOLDER snakes.
- *
- * ⚠️ NOT the real Mokshapat data. Snakes represent spiritual obstacles
- * (ignorance, attachment, ego, anger, delusion, ...). `from` is the head,
- * `to` is the tail, and always `to < from`.
- *
- * Replace with the authentic dataset later; shape is `Snake[]`.
- */
 import type { Snake } from '@/types';
 
-export const snakes: Snake[] = [
-  {
-    id: 'snake-placeholder-1',
-    from: 40,
-    to: 12,
-    kind: 'ego',
-    message: 'Placeholder — the snake of ego draws the soul downward.',
-  },
-  {
-    id: 'snake-placeholder-2',
-    from: 88,
-    to: 7,
-    kind: 'attachment',
-    message: 'Placeholder — attachment binds the soul to lower realms.',
-  },
-];
+/**
+ * Raw authoritative snake map (head -> destination), copied from the source
+ * dataset verbatim. Numeric heads slide to numeric tails; some heads lead to
+ * off-board realms (महानरक and other hells), and a few off-board realms chain
+ * onward. Nothing from the source is removed.
+ *
+ * `snakes` below is the typed, numeric-only view consumed by the board + game;
+ * `offboardSnakes` preserves the realm-bound entries for later realm support.
+ */
+export const snakesRaw: Record<string, number | string> = {
+  263:"महानरक", 259:103, 256:"महानरक", 254:256,
+  251:1,   249:178, 248:154, 244:"महानरक",
+  242:183, 240:"महानरक-लेफ्ट", 235:151, 234:151,
+  229:1,   216:1,   214:67,  209:1,
+  206:"महानरक", 203:1, 194:"महानरक-लेफ्ट", 187:"महानरक-राइट",
+  182:"महानरक", 180:"महानरक", 171:"महानरक-लेफ्ट", 164:67,
+  155:2,   147:77,  146:56,  144:26,
+  141:"महानरक", 139:85, 137:"महानरक-राइट", 135:50,
+  129:106, 125:"महानरक-लेफ्ट", 119:"महानरक", 117:"महानरक",
+  115:"महानरक-राइट", 111:"महानरक-राइट", 108:"महानरक", 106:72,
+  103:"महानरक-लेफ्ट", 96:"महानरक", 91:65, 88:"महानरक-राइट",
+  84:"महानरक", 80:12,  77:26,  72:60,
+  70:4,    64:"महानरक-राइट", 60:37,  58:"महानरक",
+  52:11,   48:"महानरक", 46:1,   44:14,
+  42:19,   40:"महानरक-राइट", 37:23,  31:26,
+  26:"महानरक-लेफ्ट", 23:11,  21:12,  17:15,
+  11:"मरण",
+  "आत्मपरिभाण लोक":"महानरक-लेफ्ट",
+  "शून्य लोक":"महानरक-लेफ्ट",
+  "बेहस्त लोक":"मृत्यू उर्फ कबर",
+};
+
+export const snakeHeads = new Set(
+  Object.keys(snakesRaw)
+    .map(Number)
+    .filter(n => !isNaN(n)),
+);
+
+export const snakeTails = new Set<number>();
+(Object.values(snakesRaw) as (number | string)[]).forEach(v => {
+  if (typeof v === 'number') snakeTails.add(v);
+});
+
+export const snakeTailFrom: Record<number, number[]> = {};
+Object.entries(snakesRaw).forEach(([h, t]) => {
+  if (typeof t === 'number') {
+    if (!snakeTailFrom[t]) snakeTailFrom[t] = [];
+    snakeTailFrom[t]!.push(Number(h));
+  }
+});
+
+// Snakes with string (off-board) destinations / origins (realms, hells).
+export const snakeToHell: Record<number | string, string> = {};
+Object.entries(snakesRaw).forEach(([k, v]) => {
+  if (typeof v === 'string') {
+    const kn = Number(k);
+    snakeToHell[isNaN(kn) ? k : kn] = v;
+  }
+});
+
+/**
+ * Playable snakes: numeric head -> numeric tail. Consumed by the board renderer
+ * and the movement/jump logic.
+ */
+export const snakes: Snake[] = Object.entries(snakesRaw)
+  .map(([fromKey, to]): Snake | null => {
+    const from = Number(fromKey);
+    if (Number.isNaN(from) || typeof to !== 'number') {
+      return null;
+    }
+    return { id: `snake-${from}`, from, to };
+  })
+  .filter((s): s is Snake => s !== null);
+
+/**
+ * Off-board snakes — head and/or destination is a realm string (महानरक, etc.).
+ * Preserved so no source data is lost; not yet rendered or played (a later
+ * realms feature will consume these).
+ */
+export const offboardSnakes: { id: string; from: number | string; to: string }[] =
+  Object.entries(snakesRaw)
+    .filter(([fromKey, to]) => Number.isNaN(Number(fromKey)) || typeof to === 'string')
+    .map(([from, to]) => ({
+      id: `snake-off-${from}`,
+      from: Number.isNaN(Number(from)) ? from : Number(from),
+      to: String(to),
+    }));
+
+export const SNAKE_WAYPOINTS: Record<number, [number, number]> = {
+  263: [215, 216],
+  244: [179, 180],
+  180: [155, 156],
+  108: [107, 108],
+  84:  [23, 24],
+};

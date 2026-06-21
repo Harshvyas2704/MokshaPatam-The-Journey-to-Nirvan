@@ -4,7 +4,6 @@
 import {
   clampOffset,
   computeMinScale,
-  getBottomAlignedTranslateY,
   getMaxOffset,
 } from '@/features/board/zoom';
 
@@ -43,12 +42,6 @@ describe('computeMinScale', () => {
   });
 
   it('respects the floor for an enormous board', () => {
-    expect(computeMinScale(10000, 10000, 360, 700)).toBe(0.2);
-  });
-});
-
-describe('getBottomAlignedTranslateY', () => {
-  it('returns a negative offset that reveals the bottom of the board', () => {
-    expect(getBottomAlignedTranslateY(2000, 600)).toBe(-700);
+    expect(computeMinScale(10000, 10000, 360, 700)).toBe(0.05);
   });
 });

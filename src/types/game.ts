@@ -1,73 +1,79 @@
 /**
  * Game-state domain types.
  *
- * Mirrors the state shape described in the master prompt. Game LOGIC is not
- * implemented in Phase 1 — these types only define the contract that the
- * store and later phases (dice, movement, snakes/ladders) will fulfil.
+ * The soul's position can be a numbered square (1..285), the janmasthan start
+ * (numeric 0), or an off-board REALM (a Devanagari string such as महानरक).
  */
+
+/** A position on (or off) the board: 0 = janmasthan, 1..285 = squares, string = realm. */
+export type Position = number | string;
 
 /** High-level lifecycle of a game session. */
-export type GameStatus = 'idle' | 'playing' | 'won' | 'paused';
+export type GameStatus = 'idle' | 'playing' | 'won';
 
-/** The reason a single move resolved the way it did. */
-export type MoveOutcome = 'normal' | 'bounce' | 'snake' | 'ladder' | 'win';
+/** How a single move resolved. */
+export type MoveOutcome =
+  | 'normal' // plain forward move
+  | 'enter' // entered the board from janmasthan
+  | 'snake' // slid down a (numeric) snake
+  | 'ladder' // climbed a (numeric) ladder
+  | 'narak' // fell off-board into a hell/realm
+  | 'escape' // moved out of a realm (back toward the start)
+  | 'blocked' // could not move (overshoot, or stuck on the grave)
+  | 'win'; // reached Moksha (285)
+
+/** One hop within a resolved move, for the move log. */
+export interface MoveHop {
+  to: Position;
+  kind: 'walk' | 'enter' | 'snake' | 'ladder' | 'narak' | 'escape';
+}
 
 /**
- * A recorded move in the session history. Used for the move log / replay and
- * for derived statistics.
+ * A recorded move in the session history.
  */
 export interface MoveHistoryEntry {
-  /** Monotonic move index within the session. */
   id: number;
-  /** Position before the move. */
-  from: number;
-  /** Position after the move (post snake/ladder resolution). */
-  to: number;
-  /** Dice value that triggered the move. */
+  from: Position;
+  to: Position;
   dice: number;
-  /** How the move resolved. */
   outcome: MoveOutcome;
-  /** Epoch milliseconds the move was recorded. */
   timestamp: number;
 }
 
 /**
- * The fully-resolved outcome of a single move, produced by the (pure) game
- * logic and consumed by the store and (later) the movement animation.
+ * The fully-resolved outcome of a single move, produced by the pure game logic
+ * and consumed by the store + the movement animation.
  */
 export interface MoveResult {
-  /** Square the move started from. */
-  from: number;
+  /** Position the move started from. */
+  from: Position;
   /** Dice value rolled. */
   dice: number;
-  /**
-   * The square-by-square walk from `from` (exclusive) to `landing` (inclusive),
-   * including any bounce-back off the goal. Drives Phase 6 movement animation.
-   */
+  /** Numeric square-by-square walk (empty for realm/escape moves). */
   steps: number[];
-  /** Square reached after walking (post bounce), before any snake/ladder. */
-  landing: number;
-  /** Snake tail / ladder top if `landing` is a snake head or ladder base. */
-  jumpTo: number | null;
-  /** Final resting square (`jumpTo ?? landing`). */
-  to: number;
+  /** Numeric square reached after walking, before any jump (null if none). */
+  landing: number | null;
+  /** Final resting position (square or realm). */
+  to: Position;
   /** How the move resolved. */
   outcome: MoveOutcome;
+  /** Ordered hops (for the move log). */
+  hops: MoveHop[];
 }
 
 /**
  * The complete game state held by the Zustand store.
  */
 export interface GameState {
-  /** Current cell the soul token occupies (1..285). */
+  /** Last numbered square (0 = janmasthan). Meaningful when `realm` is null. */
   currentSquare: number;
-  /** Previous cell, or null at the start of a session. */
-  previousSquare: number | null;
+  /** Off-board realm key, or null when on the board / at janmasthan. */
+  realm: string | null;
   /** Latest dice value, or null before the first roll. */
   diceValue: number | null;
   /** Whether a dice roll animation / resolution is in progress. */
   isRolling: boolean;
-  /** Whether the soul token is mid-animation (walking / bouncing / jumping). */
+  /** Whether the soul token is mid-animation. */
   isMoving: boolean;
   /** Whether the soul is auto-rolling toward the goal. */
   isAutoPlaying: boolean;
@@ -81,6 +87,14 @@ export interface GameState {
   snakesEncountered: number;
   /** How many ladders the player has climbed this session. */
   laddersClimbed: number;
+  /** How many times the soul has fallen into a naraka. */
+  narakCount: number;
+  /** How many times the soul has died (reached Maraṇa or the grave). */
+  deaths: number;
+  /** How many times the soul has been reborn (returned to janmasthan). */
+  rebirths: number;
+  /** Consecutive rolls spent on the grave (escape needs 4). */
+  mrutyuRollCount: number;
   /** Ordered history of resolved moves. */
   moveHistory: MoveHistoryEntry[];
 }

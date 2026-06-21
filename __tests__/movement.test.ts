@@ -1,89 +1,72 @@
 /**
- * Unit tests for the pure game-move logic.
+ * Unit tests for the (pure) move resolution against the real dataset.
  */
-import {
-  buildStepPath,
-  getMovePath,
-  reflectLanding,
-  resolveMove,
-  type JumpMap,
-} from '@/features/game/logic/movement';
-
-const GOAL = 285;
-const NO_SNAKES: JumpMap = {};
-const NO_LADDERS: JumpMap = {};
-
-describe('reflectLanding', () => {
-  it('moves forward normally', () => {
-    expect(reflectLanding(10, 5, GOAL)).toBe(15);
-  });
-  it('lands exactly on the goal', () => {
-    expect(reflectLanding(280, 5, GOAL)).toBe(GOAL);
-  });
-  it('bounces back on overshoot', () => {
-    // 283 + 5 = 288 -> 2*285 - 288 = 282
-    expect(reflectLanding(283, 5, GOAL)).toBe(282);
-  });
-});
-
-describe('buildStepPath', () => {
-  it('walks forward one square per step', () => {
-    expect(buildStepPath(10, 3, GOAL)).toEqual([11, 12, 13]);
-  });
-  it('reaches the goal then bounces back', () => {
-    // from 283 dice 5: 284,285, turn, 284,283,282
-    expect(buildStepPath(283, 5, GOAL)).toEqual([284, 285, 284, 283, 282]);
-  });
-  it('ends on the goal with an exact roll', () => {
-    const path = buildStepPath(282, 3, GOAL);
-    expect(path[path.length - 1]).toBe(GOAL);
-  });
-});
+import { resolveMove } from '@/features/game/logic';
+import { REALM } from '@/data';
 
 describe('resolveMove', () => {
-  it('resolves a normal move', () => {
-    const r = resolveMove(10, 4, GOAL, NO_SNAKES, NO_LADDERS);
-    expect(r.to).toBe(14);
-    expect(r.outcome).toBe('normal');
-    expect(r.jumpTo).toBeNull();
+  it('enters the board from janmasthan at square 1', () => {
+    const { move } = resolveMove(0, 4, 0);
+    expect(move.to).toBe(1);
+    expect(move.outcome).toBe('enter');
+    expect(move.steps).toEqual([1]);
   });
 
-  it('climbs a ladder when landing on its base', () => {
-    const r = resolveMove(5, 3, GOAL, NO_SNAKES, { 8: 31 });
-    expect(r.landing).toBe(8);
-    expect(r.to).toBe(31);
-    expect(r.outcome).toBe('ladder');
+  it('does not bounce: an overshoot past 285 stays put', () => {
+    const { move } = resolveMove(283, 5, 0);
+    expect(move.to).toBe(283);
+    expect(move.outcome).toBe('blocked');
+    expect(move.steps).toEqual([]);
   });
 
-  it('descends a snake when landing on its head', () => {
-    const r = resolveMove(38, 2, GOAL, { 40: 12 }, NO_LADDERS);
-    expect(r.landing).toBe(40);
-    expect(r.to).toBe(12);
-    expect(r.outcome).toBe('snake');
+  it('wins on reaching 285', () => {
+    const { move, won } = resolveMove(284, 1, 0);
+    expect(move.to).toBe(285);
+    expect(move.outcome).toBe('win');
+    expect(won).toBe(true);
   });
 
-  it('wins on exact landing', () => {
-    const r = resolveMove(282, 3, GOAL, NO_SNAKES, NO_LADDERS);
-    expect(r.to).toBe(GOAL);
-    expect(r.outcome).toBe('win');
+  it('slides down a numeric snake (251 -> 1)', () => {
+    const { move, snake } = resolveMove(250, 1, 0);
+    expect(move.outcome).toBe('snake');
+    expect(move.to).toBe(1);
+    expect(snake).toBe(1);
   });
 
-  it('marks a bounce-back move', () => {
-    const r = resolveMove(283, 5, GOAL, NO_SNAKES, NO_LADDERS);
-    expect(r.to).toBe(282);
-    expect(r.outcome).toBe('bounce');
-  });
-});
-
-describe('getMovePath', () => {
-  it('is just the walk when there is no jump', () => {
-    const r = resolveMove(10, 4, GOAL, NO_SNAKES, NO_LADDERS);
-    expect(getMovePath(r)).toEqual([11, 12, 13, 14]);
+  it('climbs a numeric ladder (7 -> 29)', () => {
+    const { move, ladder } = resolveMove(6, 1, 0);
+    expect(move.outcome).toBe('ladder');
+    expect(move.to).toBe(29);
+    expect(ladder).toBe(1);
   });
 
-  it('appends the jump destination after the walk', () => {
-    const r = resolveMove(5, 3, GOAL, NO_SNAKES, { 8: 31 });
-    // walks 6,7,8 then jumps to 31
-    expect(getMovePath(r)).toEqual([6, 7, 8, 31]);
+  it('falls off-board into a naraka (103 -> महानरक-लेफ्ट)', () => {
+    const { move, narak } = resolveMove(102, 1, 0);
+    expect(move.outcome).toBe('narak');
+    expect(move.to).toBe(REALM.mahanarakLeft);
+    expect(narak).toBe(1);
+  });
+
+  it('escapes mahanarak to kshudranarak', () => {
+    const { move } = resolveMove(REALM.mahanarakLeft, 3, 0);
+    expect(move.outcome).toBe('escape');
+    expect(move.to).toBe(REALM.kshudranarak);
+  });
+
+  it('escapes kshudranarak back to janmasthan (0)', () => {
+    const { move } = resolveMove(REALM.kshudranarak, 2, 0);
+    expect(move.outcome).toBe('escape');
+    expect(move.to).toBe(0);
+  });
+
+  it('the grave needs four rolls before releasing to महानरक', () => {
+    const stuck = resolveMove(REALM.grave, 1, 0);
+    expect(stuck.move.outcome).toBe('blocked');
+    expect(stuck.mrutyuRollCount).toBe(1);
+
+    const released = resolveMove(REALM.grave, 1, 3);
+    expect(released.move.outcome).toBe('narak');
+    expect(released.move.to).toBe(REALM.mahanarakRight);
+    expect(released.mrutyuRollCount).toBe(0);
   });
 });

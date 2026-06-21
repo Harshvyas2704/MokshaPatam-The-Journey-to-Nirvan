@@ -4,24 +4,17 @@
  * Game LOGIC is implemented in later phases; these are the tunable numbers
  * that logic will reference, kept out of components to avoid magic numbers.
  */
-import { FIRST_CELL, LAST_CELL } from './board';
+import { LAST_CELL } from './board';
 
 /** Inclusive dice range. */
 export const DICE_MIN = 1;
 export const DICE_MAX = 6;
 
-/** Where the soul begins. */
-export const START_SQUARE = FIRST_CELL;
+/** Where the soul begins: janmasthan (off-board position 0). */
+export const START_SQUARE = 0;
 
-/** The square the soul must land on EXACTLY to win. */
+/** The square that completes the journey to Moksha. */
 export const GOAL_SQUARE = LAST_CELL;
-
-/**
- * When a roll would overshoot the goal, the soul bounces backward by the
- * remaining steps rather than winning. This flag documents that rule for the
- * movement engine (Phase 5/6).
- */
-export const BOUNCE_BACK_ON_OVERSHOOT = true;
 
 /**
  * Delay between automatic rolls when auto-play is active (ms). Slow enough that

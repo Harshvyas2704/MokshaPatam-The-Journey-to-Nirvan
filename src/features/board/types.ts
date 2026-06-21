@@ -22,11 +22,15 @@ export interface ContainerSize {
 
 /** Fully resolved pixel dimensions of the board for a given container. */
 export interface BoardDimensions extends BoardBounds {
-  /** Edge length of a single square cell slot (px). */
+  /** Edge length of a single (lower-grid) square cell slot (px). */
   cellSize: number;
+  /** Edge length of an upper-section cell slot (px); 0 when no upper section. */
+  upperCell: number;
+  /** Height (px) reserved above the lower grid for the scattered upper section. */
+  upperHeight: number;
   /** Total board width in px (columns * cellSize). */
   boardWidth: number;
-  /** Total board height in px (rows * cellSize). */
+  /** Total board height in px (upperHeight + lower grid + off-board bands). */
   boardHeight: number;
 }
 
@@ -40,8 +44,22 @@ export interface PositionedCell extends BoardCell {
   size: number;
 }
 
+/** An off-board realm / janmasthan cell, resolved to pixel coordinates. */
+export interface PositionedOffboardCell {
+  /** Layout key: the realm string, or 'JANMASTHAN'. */
+  key: string;
+  sanskrit: string;
+  english: string;
+  kind: 'start' | 'narak';
+  x: number;
+  y: number;
+  size: number;
+}
+
 /** The complete output of the layout engine. */
 export interface BoardLayout {
   dimensions: BoardDimensions;
   positionedCells: PositionedCell[];
+  /** Realm / janmasthan cells in the band below the board. */
+  offboardCells: PositionedOffboardCell[];
 }

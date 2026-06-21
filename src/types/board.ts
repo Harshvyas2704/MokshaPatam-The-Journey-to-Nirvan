@@ -49,8 +49,8 @@ export interface BoardCell {
 export type SnakeKind = string;
 
 /**
- * A snake: descending the player from `from` (head) to `to` (tail).
- * Always: `to < from`.
+ * A snake: moving the player from `from` (head) to `to` (tail). Usually
+ * `to < from`, though the authentic spiritual board has a few exceptions.
  */
 export interface Snake {
   id: string;
@@ -58,8 +58,8 @@ export interface Snake {
   from: number;
   /** Tail cell id (where the player slides down to). */
   to: number;
-  /** Spiritual vice / obstacle this snake embodies. */
-  kind: SnakeKind;
+  /** Optional spiritual vice / obstacle this snake embodies. */
+  kind?: SnakeKind;
   /** Optional teaching message shown when encountered. */
   message?: string;
 }
@@ -79,8 +79,8 @@ export interface Ladder {
   from: number;
   /** Top cell id (where the player ascends to). */
   to: number;
-  /** Spiritual virtue this ladder embodies. */
-  kind: LadderKind;
+  /** Optional spiritual virtue this ladder embodies. */
+  kind?: LadderKind;
   /** Optional teaching message shown when climbed. */
   message?: string;
 }

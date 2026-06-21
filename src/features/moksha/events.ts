@@ -17,10 +17,17 @@ import type {
   Concept,
   Ladder,
   MoveResult,
+  Position,
   Snake,
 } from '@/types';
+import { REALM_GLOSS } from '@/data';
 
-export type SpiritualEventKind = 'snake' | 'ladder' | 'moksha' | 'concept';
+export type SpiritualEventKind =
+  | 'snake'
+  | 'ladder'
+  | 'moksha'
+  | 'concept'
+  | 'narak';
 
 /**
  * A presentable spiritual event. `sanskrit` / `translation` are optional so the
@@ -39,9 +46,9 @@ export interface SpiritualEvent {
   /** Optional teaching text. */
   message?: string;
   /** Where the move began (for the journey indicator). */
-  from: number;
+  from: Position;
   /** Where the soul came to rest. */
-  to: number;
+  to: Position;
 }
 
 /** Pre-indexed dataset for O(1) lookups while resolving an event. */
@@ -81,8 +88,10 @@ export function describeEvent(
   move: MoveResult,
   sources: EventSources,
 ): SpiritualEvent | null {
+  const landing = move.landing;
+
   if (move.outcome === 'win') {
-    const cell = sources.cells.get(move.to);
+    const cell = typeof move.to === 'number' ? sources.cells.get(move.to) : undefined;
     return {
       kind: 'moksha',
       label: 'Moksha',
@@ -96,13 +105,25 @@ export function describeEvent(
     };
   }
 
-  if (move.outcome === 'snake') {
-    const snake = sources.snakesByHead.get(move.landing);
+  if (move.outcome === 'narak' && typeof move.to === 'string') {
+    return {
+      kind: 'narak',
+      label: 'Naraka',
+      sanskrit: move.to,
+      translation: REALM_GLOSS[move.to],
+      message: 'The soul has fallen into a naraka. It must find its way back.',
+      from: move.from,
+      to: move.to,
+    };
+  }
+
+  if (move.outcome === 'snake' && landing !== null) {
+    const snake = sources.snakesByHead.get(landing);
     if (snake) {
       const head = sources.cells.get(snake.from);
       return {
         kind: 'snake',
-        label: toLabel(snake.kind),
+        label: snake.kind ? toLabel(snake.kind) : head?.title ?? `Square ${snake.from}`,
         title: head?.title,
         sanskrit: head?.sanskrit,
         translation: head?.translation,
@@ -113,13 +134,13 @@ export function describeEvent(
     }
   }
 
-  if (move.outcome === 'ladder') {
-    const ladder = sources.laddersByBase.get(move.landing);
+  if (move.outcome === 'ladder' && landing !== null) {
+    const ladder = sources.laddersByBase.get(landing);
     if (ladder) {
       const base = sources.cells.get(ladder.from);
       return {
         kind: 'ladder',
-        label: toLabel(ladder.kind),
+        label: ladder.kind ? toLabel(ladder.kind) : base?.title ?? `Square ${ladder.from}`,
         title: base?.title,
         sanskrit: base?.sanskrit,
         translation: base?.translation,
@@ -130,7 +151,10 @@ export function describeEvent(
     }
   }
 
-  // Plain landing: surface a concept node, if the cell carries teaching content.
+  // Plain landing on a numbered square: surface a concept node if present.
+  if (typeof move.to !== 'number') {
+    return null;
+  }
   const concept = sources.conceptsByCell.get(move.to);
   if (concept) {
     return {

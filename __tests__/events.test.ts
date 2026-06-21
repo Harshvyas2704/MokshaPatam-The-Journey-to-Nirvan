@@ -49,9 +49,9 @@ function move(partial: Partial<MoveResult>): MoveResult {
     dice: 1,
     steps: [],
     landing: 1,
-    jumpTo: null,
     to: 1,
     outcome: 'normal',
+    hops: [],
     ...partial,
   };
 }
@@ -59,7 +59,7 @@ function move(partial: Partial<MoveResult>): MoveResult {
 describe('describeEvent', () => {
   it('derives a snake event keyed by the landing (head)', () => {
     const ev = describeEvent(
-      move({ from: 38, landing: 40, jumpTo: 12, to: 12, outcome: 'snake' }),
+      move({ from: 38, landing: 40, to: 12, outcome: 'snake' }),
       sources,
     );
     expect(ev).not.toBeNull();
@@ -72,7 +72,7 @@ describe('describeEvent', () => {
 
   it('derives a ladder event with the title-cased virtue', () => {
     const ev = describeEvent(
-      move({ from: 6, landing: 8, jumpTo: 31, to: 31, outcome: 'ladder' }),
+      move({ from: 6, landing: 8, to: 31, outcome: 'ladder' }),
       sources,
     );
     expect(ev!.kind).toBe('ladder');
@@ -88,6 +88,15 @@ describe('describeEvent', () => {
     expect(ev!.kind).toBe('moksha');
     expect(ev!.sanskrit).toBe('मोक्ष');
     expect(ev!.translation).toBe('liberation');
+  });
+
+  it('derives a naraka event when the soul falls off-board', () => {
+    const ev = describeEvent(
+      move({ from: 103, landing: 103, to: 'महानरक', outcome: 'narak' }),
+      sources,
+    );
+    expect(ev!.kind).toBe('narak');
+    expect(ev!.sanskrit).toBe('महानरक');
   });
 
   it('surfaces a concept when landing on a concept cell', () => {

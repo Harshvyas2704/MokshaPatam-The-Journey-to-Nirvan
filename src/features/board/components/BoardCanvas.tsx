@@ -11,13 +11,19 @@ import { StyleSheet, View } from 'react-native';
 import { SoulTokenLayer } from '@/features/player';
 import type { BoardLayout } from '../types';
 import { BoardCellView } from './BoardCellView';
+import { OffboardCellView } from './OffboardCellView';
 import { SnakesLaddersLayer } from './SnakesLaddersLayer';
 
 interface BoardCanvasProps {
   layout: BoardLayout;
+  /** When false, the snakes & ladders overlay is hidden (board-only view). */
+  showOverlay?: boolean;
 }
 
-const BoardCanvasComponent: React.FC<BoardCanvasProps> = ({ layout }) => {
+const BoardCanvasComponent: React.FC<BoardCanvasProps> = ({
+  layout,
+  showOverlay = true,
+}) => {
   return (
     <View
       style={[
@@ -30,8 +36,13 @@ const BoardCanvasComponent: React.FC<BoardCanvasProps> = ({ layout }) => {
       {layout.positionedCells.map(cell => (
         <BoardCellView key={cell.id} cell={cell} />
       ))}
-      {/* Snakes & ladders sit above the cells, below the soul token. */}
-      <SnakesLaddersLayer layout={layout} />
+      {/* Realm / janmasthan cells in the band below square 1. */}
+      {layout.offboardCells.map(cell => (
+        <OffboardCellView key={cell.key} cell={cell} />
+      ))}
+      {/* Snakes & ladders sit above the cells, below the soul token.
+          Hidden in the board-only view so the squares can be read clearly. */}
+      {showOverlay ? <SnakesLaddersLayer layout={layout} /> : null}
       {/* The soul token rides on top, within the same transform. */}
       <SoulTokenLayer layout={layout} />
     </View>

@@ -9,12 +9,12 @@
  * Sizes are relative to the board's cell size so the token scales with zoom.
  */
 export const SOUL_TOKEN = {
-  /** Core orb diameter relative to cell size. */
-  coreRatio: 0.42,
+  /** Core orb diameter relative to cell size (small flame, sits in its square). */
+  coreRatio: 0.3,
   /** Brightest inner highlight diameter relative to the core. */
   highlightRatio: 0.4,
   /** Outer glow (aura) diameter relative to cell size. */
-  auraRatio: 1.0,
+  auraRatio: 0.5,
 
   /** Number of stacked translucent layers used to fake a soft radial glow. */
   glowLayers: 7,
@@ -30,17 +30,17 @@ export const SOUL_TOKEN = {
   /** One half-cycle of the breath, in ms (slow + calm). */
   pulseDurationMs: 2000,
 
-  /** Halo rings that radiate outward and fade. */
+  /** Halo rings that radiate outward and fade (kept close so it stays small). */
   ringCount: 2,
   /** Ring scale travel: from `ringMinScale` (at the core) outward. */
-  ringMinScale: 0.5,
-  ringMaxScale: 1.9,
-  ringMaxOpacity: 0.35,
+  ringMinScale: 0.4,
+  ringMaxScale: 1.2,
+  ringMaxOpacity: 0.3,
   /** One ring emanation cycle, in ms. */
   ringDurationMs: 3200,
 
   /** Gentle floating bob, relative to cell size, and its period. */
-  floatRatio: 0.05,
+  floatRatio: 0.035,
   floatDurationMs: 2600,
 } as const;
 

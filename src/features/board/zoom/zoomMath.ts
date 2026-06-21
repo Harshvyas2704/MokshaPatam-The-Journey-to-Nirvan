@@ -48,15 +48,3 @@ export function computeMinScale(
   );
   return clamp(Math.min(fit, 1), BOARD_ZOOM.minScaleFloor, 1);
 }
-
-/**
- * Initial vertical offset that aligns the BOTTOM of the board with the bottom
- * of the viewport — i.e. shows cell 1 (the soul's birth). A negative offset
- * shifts the content upward to reveal the bottom.
- */
-export function getBottomAlignedTranslateY(
-  scaledHeight: number,
-  viewportHeight: number,
-): number {
-  return -getMaxOffset(scaledHeight, viewportHeight);
-}

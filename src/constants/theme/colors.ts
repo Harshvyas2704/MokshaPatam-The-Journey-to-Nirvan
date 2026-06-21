@@ -30,9 +30,19 @@ export const colors = {
   ladder: '#3E6B4F', // ascent / virtue
   moksha: '#E6C25A', // liberation glow
 
-  // Soul token (Phase 4)
-  soul: '#FFE9B0',
-  soulAura: '#FFD27A',
+  // Board cells — light "manuscript" tiles (default white; tinted by role).
+  cellBg: '#F7F2E8', // default near-white tile
+  cellBorder: '#D8C9AD',
+  cellLadderBg: '#DCEAD3', // ladder destination — light green
+  cellLadderBorder: '#7FA86A',
+  cellSnakeBg: '#F5D9D4', // snake head / start — light red
+  cellSnakeBorder: '#CC7A6E',
+  cellText: '#3E2A1C', // dark ink for light tiles
+  cellTextMuted: '#7A6048',
+
+  // Soul token — a small blue flame (hot white-blue core, blue aura).
+  soul: '#E6F2FF',
+  soulAura: '#4FA3FF',
 
   // Utility
   border: '#4A3225',

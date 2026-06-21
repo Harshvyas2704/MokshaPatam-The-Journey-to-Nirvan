@@ -2,6 +2,7 @@
  * Unit tests for the pure board layout engine.
  */
 import type { BoardCell } from '@/types';
+import { boardCells } from '@/data';
 import {
   computeBoardBounds,
   computeBoardDimensions,
@@ -27,22 +28,19 @@ describe('computeBoardBounds', () => {
 });
 
 describe('computeBoardDimensions', () => {
-  it('fits the grid within the container and clamps the cell size', () => {
+  it('uses the fixed base cell size', () => {
     const bounds = { columns: 2, rows: 3 };
-    const dims = computeBoardDimensions(bounds, { width: 400, height: 900 });
-    // maxCellSize (120) caps the otherwise-large fit.
-    expect(dims.cellSize).toBe(120);
-    expect(dims.boardWidth).toBe(240);
-    expect(dims.boardHeight).toBe(360);
+    const dims = computeBoardDimensions(bounds);
+    expect(dims.cellSize).toBe(96); // BOARD_LAYOUT.baseCellSize
+    expect(dims.boardWidth).toBe(192);
+    // Height includes the 2 off-board realm bands: (3 + 2) * 96.
+    expect(dims.boardHeight).toBe(480);
   });
 });
 
 describe('layoutCells', () => {
   it('flips the Y axis so row 0 sits at the bottom', () => {
-    const dims = computeBoardDimensions(
-      { columns: 2, rows: 3 },
-      { width: 400, height: 900 },
-    );
+    const dims = computeBoardDimensions({ columns: 2, rows: 3 });
     const positioned = layoutCells(cells, dims);
     const cell1 = positioned.find(c => c.id === 1)!;
     const moksha = positioned.find(c => c.id === 4)!;
@@ -55,7 +53,33 @@ describe('layoutCells', () => {
 
 describe('computeBoardLayout', () => {
   it('returns one positioned cell per input cell', () => {
-    const layout = computeBoardLayout(cells, { width: 400, height: 900 });
+    const layout = computeBoardLayout(cells);
     expect(layout.positionedCells).toHaveLength(cells.length);
+  });
+});
+
+describe('hybrid upper section', () => {
+  it('places the full board with a scattered upper section', () => {
+    const layout = computeBoardLayout(boardCells);
+    const byId = (id: number) =>
+      layout.positionedCells.find(c => c.id === id)!;
+
+    // Reserves vertical space above the lower grid for the upper section.
+    expect(layout.dimensions.upperHeight).toBeGreaterThan(0);
+    expect(layout.positionedCells).toHaveLength(boardCells.length);
+
+    const c1 = byId(1); // birth — bottom of the lower grid
+    const c285 = byId(285); // pyramid apex — top of the board
+    const c234 = byId(234); // oval ring — between the two
+
+    // Upper cells are smaller (fit to the board width) than lower cells.
+    expect(c285.size).toBeLessThan(c1.size);
+    expect(c234.size).toBeLessThan(c1.size);
+
+    // Vertical order: apex above the oval ring, ring above the lower grid.
+    expect(c285.y).toBeLessThan(c234.y);
+    expect(c234.y).toBeLessThan(c1.y);
+    // Cell 1 sits below the entire upper section.
+    expect(c1.y).toBeGreaterThanOrEqual(layout.dimensions.upperHeight);
   });
 });

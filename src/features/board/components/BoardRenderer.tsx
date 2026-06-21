@@ -16,19 +16,27 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { LayoutChangeEvent, StyleSheet, View } from 'react-native';
+import {
+  LayoutChangeEvent,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
-import { BOARD_ZOOM, colors } from '@/constants';
+import { BOARD_ZOOM, colors, radius, spacing, typography } from '@/constants';
 import { useBoardLayout } from '../hooks/useBoardLayout';
 import { useFollowSoul } from '../hooks/useFollowSoul';
-import type { ContainerSize } from '../types';
-import { computeMinScale, getBottomAlignedTranslateY } from '../zoom';
+import type { ContainerSize, PositionedCell } from '../types';
+import { computeMinScale, getMaxOffset } from '../zoom';
 import { BoardCanvas } from './BoardCanvas';
+import { CellDetailModal } from './CellDetailModal';
 
 const ZERO_SIZE: ContainerSize = { width: 0, height: 0 };
 const TIMING = { duration: 220 };
@@ -55,6 +63,10 @@ const BoardRenderer: React.FC = () => {
   const layout = useBoardLayout(viewport);
   const hasAligned = useRef(false);
 
+  // Board-only view: hide the snakes & ladders overlay to read the squares.
+  const [showOverlay, setShowOverlay] = useState(true);
+  const onToggleOverlay = useCallback(() => setShowOverlay(v => !v), []);
+
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
   const translateX = useSharedValue(0);
@@ -73,6 +85,28 @@ const BoardRenderer: React.FC = () => {
     [boardWidth, boardHeight, viewportWidth, viewportHeight],
   );
 
+  // Tap-to-inspect: the selected cell drives the detail modal.
+  const [selectedCell, setSelectedCell] = useState<PositionedCell | null>(null);
+  const onPickCell = useCallback(
+    (localX: number, localY: number) => {
+      if (!layout) {
+        return;
+      }
+      const cell = layout.positionedCells.find(
+        c =>
+          localX >= c.x &&
+          localX <= c.x + c.size &&
+          localY >= c.y &&
+          localY <= c.y + c.size,
+      );
+      if (cell) {
+        setSelectedCell(cell);
+      }
+    },
+    [layout],
+  );
+  const onCloseDetail = useCallback(() => setSelectedCell(null), []);
+
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
     setViewport(prev =>
@@ -80,16 +114,42 @@ const BoardRenderer: React.FC = () => {
     );
   }, []);
 
-  // Align to the bottom (cell 1) once, when the board is first measured.
+  // Start at a readable zoom focused on square 1 (bottom-left) once measured.
+  // The user can pinch out from here to reach the whole-board overview.
   useEffect(() => {
-    if (hasAligned.current || !layout || viewportHeight <= 0) {
+    if (
+      hasAligned.current ||
+      !layout ||
+      viewportWidth <= 0 ||
+      viewportHeight <= 0
+    ) {
       return;
     }
     hasAligned.current = true;
-    const initialY = getBottomAlignedTranslateY(boardHeight, viewportHeight);
+    const s = BOARD_ZOOM.initialScale;
+    scale.value = s;
+    savedScale.value = s;
+    // Reveal the bottom (the naraka band + janmasthan, where the soul starts),
+    // centered horizontally.
+    const initialX = 0;
+    const initialY = -getMaxOffset(boardHeight * s, viewportHeight);
+    translateX.value = initialX;
+    savedTranslateX.value = initialX;
     translateY.value = initialY;
     savedTranslateY.value = initialY;
-  }, [layout, boardHeight, viewportHeight, translateY, savedTranslateY]);
+  }, [
+    layout,
+    boardWidth,
+    boardHeight,
+    viewportWidth,
+    viewportHeight,
+    scale,
+    savedScale,
+    translateX,
+    savedTranslateX,
+    translateY,
+    savedTranslateY,
+  ]);
 
   // Keep the moving soul in view by gliding the pan offset along its path.
   useFollowSoul({
@@ -102,7 +162,7 @@ const BoardRenderer: React.FC = () => {
   });
 
   const gesture = useMemo(() => {
-    const { maxScale, doubleTapScale } = BOARD_ZOOM;
+    const { maxScale, doubleTapScale, initialScale } = BOARD_ZOOM;
 
     const pan = Gesture.Pan()
       .onStart(() => {
@@ -154,7 +214,12 @@ const BoardRenderer: React.FC = () => {
     const doubleTap = Gesture.Tap()
       .numberOfTaps(2)
       .onEnd(() => {
-        const target = scale.value > 1 ? 1 : doubleTapScale;
+        // Toggle between the readable home zoom and a closer zoom (never out;
+        // zooming out to the overview is reserved for pinch).
+        const target =
+          scale.value >= (initialScale + doubleTapScale) / 2
+            ? initialScale
+            : doubleTapScale;
         scale.value = withTiming(target, TIMING);
         translateX.value = withTiming(
           clampOffsetW(translateX.value, boardWidth * target, viewportWidth),
@@ -167,7 +232,24 @@ const BoardRenderer: React.FC = () => {
         savedScale.value = target;
       });
 
-    return Gesture.Simultaneous(pan, pinch, doubleTap);
+    // Single tap inspects the tapped cell. Convert the viewport tap point into
+    // board-local coordinates (undo the current pan/zoom), then hit-test in JS.
+    const singleTap = Gesture.Tap()
+      .numberOfTaps(1)
+      .maxDuration(260)
+      .onEnd(event => {
+        const localX =
+          (event.x - viewportWidth / 2 - translateX.value) / scale.value +
+          boardWidth / 2;
+        const localY =
+          (event.y - viewportHeight / 2 - translateY.value) / scale.value +
+          boardHeight / 2;
+        runOnJS(onPickCell)(localX, localY);
+      });
+
+    // Double tap wins over single tap (so a double doesn't also open details).
+    const taps = Gesture.Exclusive(doubleTap, singleTap);
+    return Gesture.Simultaneous(pan, pinch, taps);
   }, [
     boardWidth,
     boardHeight,
@@ -180,6 +262,7 @@ const BoardRenderer: React.FC = () => {
     savedScale,
     savedTranslateX,
     savedTranslateY,
+    onPickCell,
   ]);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -191,19 +274,43 @@ const BoardRenderer: React.FC = () => {
   }));
 
   return (
-    <View style={styles.viewport} onLayout={onLayout}>
-      {layout ? (
-        <GestureDetector gesture={gesture}>
-          <Animated.View style={[styles.surface, animatedStyle]}>
-            <BoardCanvas layout={layout} />
-          </Animated.View>
-        </GestureDetector>
-      ) : null}
+    <View style={styles.container}>
+      {/* Gestures are attached to the (untransformed) viewport, so tap
+          coordinates are in viewport space and hit-testing is correct. */}
+      <GestureDetector gesture={gesture}>
+        <View style={styles.viewport} onLayout={onLayout}>
+          {layout ? (
+            <Animated.View style={[styles.surface, animatedStyle]}>
+              <BoardCanvas layout={layout} showOverlay={showOverlay} />
+            </Animated.View>
+          ) : null}
+        </View>
+      </GestureDetector>
+
+      {/* Floating toggle to show the bare board (snakes & ladders hidden). */}
+      <TouchableOpacity
+        style={styles.overlayToggle}
+        onPress={onToggleOverlay}
+        accessibilityRole="button"
+        accessibilityState={{ selected: !showOverlay }}
+        accessibilityLabel={
+          showOverlay ? 'Hide snakes and ladders' : 'Show snakes and ladders'
+        }>
+        <Text style={styles.overlayToggleText}>
+          {showOverlay ? 'Board only' : 'Show paths'}
+        </Text>
+      </TouchableOpacity>
+
+      <CellDetailModal cell={selectedCell} onClose={onCloseDetail} />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    position: 'relative',
+  },
   viewport: {
     flex: 1,
     overflow: 'hidden',
@@ -213,6 +320,23 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  overlayToggle: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.copper,
+    backgroundColor: colors.overlay,
+  },
+  overlayToggleText: {
+    color: colors.ivory,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
+    fontFamily: typography.fontFamily.primary,
   },
 });
 

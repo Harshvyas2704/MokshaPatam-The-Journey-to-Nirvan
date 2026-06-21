@@ -27,6 +27,7 @@ const ACCENT: Record<SpiritualEventKind, { color: string; action: string }> = {
   ladder: { color: colors.gold, action: 'Continue the journey' },
   moksha: { color: colors.moksha, action: 'Begin anew' },
   concept: { color: colors.copper, action: 'Continue the journey' },
+  narak: { color: '#D9806E', action: 'Continue the journey' },
 };
 
 const KIND_TITLE: Record<SpiritualEventKind, string> = {
@@ -34,6 +35,7 @@ const KIND_TITLE: Record<SpiritualEventKind, string> = {
   ladder: 'Virtue',
   moksha: 'Liberation',
   concept: 'Teaching',
+  narak: 'Naraka',
 };
 
 const SpiritualEventModalComponent: React.FC<SpiritualEventModalProps> = ({

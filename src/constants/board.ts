@@ -51,10 +51,13 @@ export const LAYOUT = {
 export const BOARD_LAYOUT = {
   /** Outer padding (px) reserved around the board inside its container. */
   padding: 12,
-  /** Smallest a single cell may shrink to (px) before it stops fitting. */
-  minCellSize: 52,
-  /** Largest a single cell may grow to (px) when there is ample space. */
-  maxCellSize: 120,
+  /**
+   * Fixed on-screen size (px) of a single cell at 100% zoom. Large enough to
+   * show the Sanskrit name + number clearly when zoomed in; the board is then
+   * scrolled/zoomed (the whole board is fit-to-screen by default). Zoom scales
+   * this visually, so it defines the "readable detail" level rather than fit.
+   */
+  baseCellSize: 96,
   /** Gap (px) inset on each side of a cell tile within its grid slot. */
   cellInset: 2,
 } as const;
@@ -65,9 +68,17 @@ export const BOARD_LAYOUT = {
 export const BOARD_ZOOM = {
   /** Maximum pinch-zoom scale. */
   maxScale: 4,
-  /** Hard floor for the minimum scale (so a huge board can't vanish). */
-  minScaleFloor: 0.2,
-  /** Scale applied by a double-tap when zooming in. */
+  /**
+   * Hard floor for the minimum scale. Low enough that the whole tall board
+   * (8 × 36 large cells) can fit on screen when the user pinches out.
+   */
+  minScaleFloor: 0.05,
+  /**
+   * Initial / "home" zoom shown on entry — a readable 100% focused on square 1.
+   * The board only zooms out (toward the overview) when the user pinches.
+   */
+  initialScale: 1,
+  /** Closer zoom a double-tap jumps to (toggles with the initial zoom). */
   doubleTapScale: 2,
 } as const;
 
@@ -76,25 +87,35 @@ export const BOARD_ZOOM = {
  * the cell size so they scale with the board.
  */
 export const BOARD_OVERLAY = {
-  /** Serpent body / head color (a visible clay red on the dark canvas). */
-  snakeColor: '#C0584E',
-  /** Snake eye accent. */
-  snakeEye: '#E6C25A',
+  /** Serpent body / head color (a muted clay red on the dark canvas). */
+  snakeColor: '#B05A50',
   /** Ladder rail (wood) color. */
   ladderRail: '#B06A3B',
   /** Ladder rung color. */
   ladderRung: '#C9A227',
-  /** Body / rail width relative to cell size. */
-  strokeRatio: 0.1,
-  /** Lateral sway of a snake body relative to its head→tail distance. */
-  snakeAmplitudeRatio: 0.16,
-  /** Half-distance between ladder rails relative to cell size. */
-  railOffsetRatio: 0.16,
+
+  // Both snakes and ladders are kept faint + thin so the CELLS stay the hero.
+  /** Rail / rung width relative to cell size. */
+  ladderStrokeRatio: 0.03,
+  /** Half-distance between ladder rails relative to cell size (narrow). */
+  railOffsetRatio: 0.05,
   /** Rung spacing relative to cell size. */
-  rungSpacingRatio: 0.6,
-  /** Snake head radius relative to cell size. */
-  snakeHeadRatio: 0.18,
-  /** Opacity for idle vs. the snake/ladder used by the latest move. */
-  idleOpacity: 0.8,
-  activeOpacity: 1,
+  rungSpacingRatio: 0.9,
+  /** Hard cap on rungs per ladder (perf — long ladders span the whole board). */
+  maxRungs: 5,
+  /** Ladder opacity — faint. */
+  ladderOpacity: 0.4,
+
+  /** Snake eye color (a small dark dot on the head). */
+  snakeEye: '#241310',
+  /** Body half-width at the head, relative to cell size (tapers to the tail). */
+  snakeHeadHalfRatio: 0.038,
+  /** Body half-width at the tail, relative to cell size (near a point). */
+  snakeTailHalfRatio: 0.007,
+  /** Lateral sway of a snake body relative to its head→tail distance. */
+  snakeAmplitudeRatio: 0.085,
+  /** How many half-undulations per cell of length (gentle). */
+  snakeWavesPerCell: 0.4,
+  /** Snake opacity — present but calm, not highlighting. */
+  snakeOpacity: 0.55,
 } as const;

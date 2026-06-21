@@ -7,8 +7,8 @@
  */
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import type { CellType } from '@/types';
 import { BOARD_LAYOUT, colors, typography } from '@/constants';
+import { ladderEnds, snakeHeads } from '@/data';
 import { clamp } from '@/utils';
 import type { PositionedCell } from '../types';
 
@@ -18,37 +18,35 @@ interface CellVisual {
   label: string;
 }
 
-const CELL_VISUALS: Record<CellType, CellVisual> = {
-  square: {
-    background: colors.surface,
-    border: colors.border,
-    label: colors.textSecondary,
-  },
-  concept: {
-    background: colors.surfaceMuted,
-    border: colors.copper,
-    label: colors.ivory,
-  },
-  realm: {
-    background: colors.maroon,
-    border: colors.copper,
-    label: colors.ivory,
-  },
-  moksha: {
-    background: colors.gold,
-    border: colors.moksha,
-    label: colors.background,
-  },
-};
+/**
+ * Cells are light "manuscript" tiles by default. Role tints them:
+ *   - a ladder DESTINATION (a square a ladder reaches) → light green
+ *   - a snake HEAD (a square a snake starts on)        → light red
+ * Moksha (the goal) keeps its golden glow. Ladder-end wins over snake-head when
+ * a square is both, matching the reference board.
+ */
+function getCellVisual(cell: PositionedCell): CellVisual {
+  if (cell.type === 'moksha') {
+    return { background: colors.gold, border: colors.moksha, label: colors.background };
+  }
+  if (ladderEnds.has(cell.id)) {
+    return { background: colors.cellLadderBg, border: colors.cellLadderBorder, label: colors.cellText };
+  }
+  if (snakeHeads.has(cell.id)) {
+    return { background: colors.cellSnakeBg, border: colors.cellSnakeBorder, label: colors.cellText };
+  }
+  return { background: colors.cellBg, border: colors.cellBorder, label: colors.cellText };
+}
 
 interface BoardCellViewProps {
   cell: PositionedCell;
 }
 
 const BoardCellViewComponent: React.FC<BoardCellViewProps> = ({ cell }) => {
-  const visual = CELL_VISUALS[cell.type];
+  const visual = getCellVisual(cell);
   const inset = BOARD_LAYOUT.cellInset;
-  const fontSize = clamp(Math.round(cell.size * 0.32), 11, 22);
+  const sanskritSize = clamp(Math.round(cell.size * 0.15), 10, 20);
+  const numberSize = clamp(Math.round(cell.size * 0.1), 8, 13);
 
   return (
     <View
@@ -64,8 +62,16 @@ const BoardCellViewComponent: React.FC<BoardCellViewProps> = ({ cell }) => {
         },
       ]}
       accessibilityRole="text"
-      accessibilityLabel={cell.title}>
-      <Text style={[styles.id, { color: visual.label, fontSize }]} numberOfLines={1}>
+      accessibilityLabel={`${cell.id}. ${cell.title}`}>
+      <Text
+        style={[styles.sanskrit, { color: visual.label, fontSize: sanskritSize }]}
+        numberOfLines={3}
+        ellipsizeMode="tail">
+        {cell.sanskrit ?? String(cell.id)}
+      </Text>
+      <Text
+        style={[styles.id, { color: visual.label, fontSize: numberSize }]}
+        numberOfLines={1}>
         {cell.id}
       </Text>
     </View>
@@ -78,11 +84,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderRadius: 6,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+  },
+  sanskrit: {
+    fontFamily: typography.fontFamily.devanagari,
+    fontWeight: typography.fontWeight.medium,
+    textAlign: 'center',
   },
   id: {
     fontFamily: typography.fontFamily.primary,
-    fontWeight: typography.fontWeight.medium,
+    fontWeight: typography.fontWeight.semibold,
+    marginTop: 3,
+    opacity: 0.7,
   },
 });
 

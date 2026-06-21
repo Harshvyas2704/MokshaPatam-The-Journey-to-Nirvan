@@ -8,7 +8,7 @@
  *
  * These controls stay fixed; only the board zooms/pans.
  */
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -20,12 +20,14 @@ import { colors, GOAL_SQUARE, radius, spacing, typography } from '@/constants';
 import { useGameStore } from '@/store';
 import { useAutoPlay } from '../hooks/useAutoPlay';
 import { Dice } from './Dice';
+import { HistoryModal } from './HistoryModal';
 
 interface ControlButtonProps {
   label: string;
   onPress: () => void;
   disabled?: boolean;
   variant?: 'primary' | 'secondary';
+  hint?: string;
   style?: ViewStyle;
 }
 
@@ -34,6 +36,7 @@ const ControlButton: React.FC<ControlButtonProps> = ({
   onPress,
   disabled,
   variant = 'primary',
+  hint,
   style,
 }) => (
   <TouchableOpacity
@@ -47,7 +50,8 @@ const ControlButton: React.FC<ControlButtonProps> = ({
     disabled={disabled}
     accessibilityRole="button"
     accessibilityState={{ disabled: !!disabled }}
-    accessibilityLabel={label}>
+    accessibilityLabel={label}
+    accessibilityHint={hint}>
     <Text style={styles.buttonLabel}>{label}</Text>
   </TouchableOpacity>
 );
@@ -57,13 +61,18 @@ const GameControls: React.FC = () => {
 
   const diceValue = useGameStore(state => state.diceValue);
   const currentSquare = useGameStore(state => state.currentSquare);
+  const realm = useGameStore(state => state.realm);
   const gameStatus = useGameStore(state => state.gameStatus);
   const isAutoPlaying = useGameStore(state => state.isAutoPlaying);
   const isMoving = useGameStore(state => state.isMoving);
+  const totalRolls = useGameStore(state => state.totalRolls);
+  const deaths = useGameStore(state => state.deaths);
+  const rebirths = useGameStore(state => state.rebirths);
   const rollDice = useGameStore(state => state.rollDice);
   const setAutoPlay = useGameStore(state => state.setAutoPlay);
   const reset = useGameStore(state => state.reset);
 
+  const [historyOpen, setHistoryOpen] = useState(false);
   const hasWon = gameStatus === 'won';
 
   const onRoll = useCallback(() => rollDice(), [rollDice]);
@@ -72,6 +81,17 @@ const GameControls: React.FC = () => {
     [setAutoPlay, isAutoPlaying],
   );
   const onReset = useCallback(() => reset(), [reset]);
+  const onOpenHistory = useCallback(() => setHistoryOpen(true), []);
+  const onCloseHistory = useCallback(() => setHistoryOpen(false), []);
+
+  // Where the soul currently is, for the status line.
+  const positionLabel = hasWon
+    ? 'Moksha attained'
+    : realm
+    ? realm // an off-board realm (e.g. महानरक)
+    : currentSquare === 0
+    ? 'Janmasthan'
+    : `Square ${currentSquare} of ${GOAL_SQUARE}`;
 
   return (
     <View style={styles.container}>
@@ -82,29 +102,55 @@ const GameControls: React.FC = () => {
             label="Roll the Dice"
             onPress={onRoll}
             disabled={hasWon || isAutoPlaying || isMoving}
+            hint="Rolls the dice once and moves the soul"
           />
           <ControlButton
             label={isAutoPlaying ? 'Stop' : 'Auto Roll'}
             onPress={onToggleAuto}
             disabled={hasWon}
             variant="secondary"
+            hint={
+              isAutoPlaying
+                ? 'Stops automatic rolling'
+                : 'Rolls automatically until Moksha is reached'
+            }
           />
         </View>
       </View>
 
       <View style={styles.statusRow}>
-        <Text style={styles.status}>
-          {hasWon
-            ? 'Liberation attained — Moksha'
-            : `Square ${currentSquare} / ${GOAL_SQUARE}`}
+        <Text
+          style={styles.status}
+          accessibilityRole="text"
+          accessibilityLiveRegion="polite">
+          {`${positionLabel} · ${totalRolls} moves`}
         </Text>
-        <TouchableOpacity
-          onPress={onReset}
-          accessibilityRole="button"
-          accessibilityLabel="Reset the journey">
-          <Text style={styles.reset}>Reset</Text>
-        </TouchableOpacity>
+        <View style={styles.statusActions}>
+          <TouchableOpacity
+            onPress={onOpenHistory}
+            accessibilityRole="button"
+            accessibilityLabel="View move history">
+            <Text style={styles.action}>History</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onReset}
+            accessibilityRole="button"
+            accessibilityLabel="Reset the journey">
+            <Text style={styles.reset}>Reset</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      <View style={styles.countersRow}>
+        <Text style={styles.counter} accessibilityLabel={`${deaths} deaths`}>
+          {`☠  Deaths  ${deaths}`}
+        </Text>
+        <Text style={styles.counter} accessibilityLabel={`${rebirths} rebirths`}>
+          {`↻  Rebirths  ${rebirths}`}
+        </Text>
+      </View>
+
+      <HistoryModal visible={historyOpen} onClose={onCloseHistory} />
     </View>
   );
 };
@@ -160,12 +206,37 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   status: {
+    flex: 1,
     color: colors.textSecondary,
     fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.primary,
   },
+  statusActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginLeft: spacing.md,
+  },
+  action: {
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    fontFamily: typography.fontFamily.primary,
+  },
   reset: {
     color: colors.gold,
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.medium,
+    fontFamily: typography.fontFamily.primary,
+  },
+  countersRow: {
+    marginTop: spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  counter: {
+    color: colors.textMuted,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
     fontFamily: typography.fontFamily.primary,

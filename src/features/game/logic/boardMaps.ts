@@ -1,24 +1,47 @@
 /**
  * Board jump maps.
  *
- * Reduces the (numeric) snake and ladder datasets into fast `head/base -> dest`
- * lookups for the move logic. Built once at module load from `@/data`.
+ * Reduces the snake/ladder datasets into fast lookups for the move logic:
+ *   - numeric snakes / ladders (square -> square),
+ *   - off-board snakes (square -> realm) and ladders (square -> realm),
+ *   - realm chains (realm -> realm/grave), e.g. बेहस्त लोक -> मृत्यू उर्फ कबर.
  *
- * NOTE: the real Mokshapat dataset also has off-board destinations (naraka /
- * loka). Those are non-numeric and are ignored here for now; supporting them is
- * a logic extension for when the real dataset is dropped in.
+ * Built once at module load from `@/data`.
  */
-import { ladders, snakes } from '@/data';
-import type { JumpMap } from './movement';
+import { offboardLadders, snakes, ladders, snakeToHell } from '@/data';
 
-/** Snake head square -> tail square. */
+/** Numeric square -> numeric square. */
+export type JumpMap = Record<number, number>;
+
+/** Numeric snake head -> tail. */
 export const snakeMap: JumpMap = snakes.reduce<JumpMap>((acc, snake) => {
   acc[snake.from] = snake.to;
   return acc;
 }, {});
 
-/** Ladder base square -> top square. */
+/** Numeric ladder base -> top. */
 export const ladderMap: JumpMap = ladders.reduce<JumpMap>((acc, ladder) => {
   acc[ladder.from] = ladder.to;
+  return acc;
+}, {});
+
+/** Numeric square (snake head) -> off-board realm. */
+export const snakeHellMap: Record<number, string> = {};
+/** Realm -> realm/grave chain (off-board origins). */
+export const realmChainMap: Record<string, string> = {};
+for (const [key, dest] of Object.entries(snakeToHell)) {
+  const n = Number(key);
+  if (Number.isNaN(n)) {
+    realmChainMap[key] = dest;
+  } else {
+    snakeHellMap[n] = dest;
+  }
+}
+
+/** Numeric ladder base -> off-board realm. */
+export const ladderOffboardMap: Record<number, string> = offboardLadders.reduce<
+  Record<number, string>
+>((acc, l) => {
+  acc[l.from] = l.to;
   return acc;
 }, {});

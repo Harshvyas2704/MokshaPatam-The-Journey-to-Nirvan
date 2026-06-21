@@ -26,6 +26,7 @@ const GLYPHS: Record<SpiritualEventKind, GlyphStyle> = {
   ladder: { glyph: '↑', background: colors.ladder },
   moksha: { glyph: 'ॐ', background: colors.moksha, devanagari: true },
   concept: { glyph: '✦', background: colors.surfaceMuted },
+  narak: { glyph: '⇊', background: colors.snake },
 };
 
 const EventGlyphComponent: React.FC<EventGlyphProps> = ({ kind, size }) => {
