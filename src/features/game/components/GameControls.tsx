@@ -66,8 +66,8 @@ const GameControls: React.FC = () => {
   const isAutoPlaying = useGameStore(state => state.isAutoPlaying);
   const isMoving = useGameStore(state => state.isMoving);
   const totalRolls = useGameStore(state => state.totalRolls);
-  const deaths = useGameStore(state => state.deaths);
-  const rebirths = useGameStore(state => state.rebirths);
+  const narakVisits = useGameStore(state => state.narakVisits);
+  const lives = useGameStore(state => state.lives);
   const rollDice = useGameStore(state => state.rollDice);
   const setAutoPlay = useGameStore(state => state.setAutoPlay);
   const reset = useGameStore(state => state.reset);
@@ -142,11 +142,13 @@ const GameControls: React.FC = () => {
       </View>
 
       <View style={styles.countersRow}>
-        <Text style={styles.counter} accessibilityLabel={`${deaths} deaths`}>
-          {`☠  Deaths  ${deaths}`}
+        <Text
+          style={styles.counter}
+          accessibilityLabel={`${narakVisits} narak visits`}>
+          {`☠  Narak  ${narakVisits}`}
         </Text>
-        <Text style={styles.counter} accessibilityLabel={`${rebirths} rebirths`}>
-          {`↻  Rebirths  ${rebirths}`}
+        <Text style={styles.counter} accessibilityLabel={`${lives} lives`}>
+          {`↻  Lives  ${lives}`}
         </Text>
       </View>
 

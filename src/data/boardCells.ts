@@ -2,10 +2,10 @@
  * Board cells — built from the authentic Mokshapat name dataset.
  *
  * The source provides English + Sanskrit names for all 285 squares but NO
- * positions, so the row/col layout is generated here: an 8-wide boustrophedon
- * (serpentine) grid (8 × 36, last row partial) with cell 1 at the bottom-left,
- * snaking upward to 285. Fewer columns means larger, readable squares. Positions
- * are device-independent layout units — the renderer converts them to pixels.
+ * positions, so the row/col layout is generated here: a 14-wide boustrophedon
+ * (serpentine) grid with cell 1 at the bottom-left, snaking upward to 285.
+ * Positions are device-independent layout units — the renderer converts them to
+ * pixels (all cells render at one uniform size).
  *
  * This generated layout is a faithful, readable default; authentic board
  * coordinates (oval ring, custom upper arrangement) can replace the row/col
@@ -17,8 +17,8 @@ import { cellNamesSanskrit } from './cellNamesSanskrit';
 
 /** Total squares on the journey. */
 export const TOTAL_CELLS = 285;
-/** Columns in the generated serpentine grid (max 8 → larger squares). */
-export const COLUMN_COUNT = 8;
+/** Columns in the generated serpentine grid (14 squares per row). */
+export const COLUMN_COUNT = 14;
 
 const GOAL = 285;
 

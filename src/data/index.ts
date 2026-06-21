@@ -11,6 +11,14 @@ import { ladders } from './ladders';
 import { concepts } from './concepts';
 
 export { boardCells, COLUMN_COUNT, TOTAL_CELLS } from './boardCells';
+export {
+  INSTRUCTION_SECTIONS,
+  INSTRUCTIONS_TITLE,
+  INSTRUCTIONS_CTA,
+  INSTRUCTIONS_CREDIT,
+  type InstructionSection,
+  type InstructionGroup,
+} from './instructions';
 export { cellNamesEnglish } from './cellNamesEnglish';
 export { cellNamesSanskrit } from './cellNamesSanskrit';
 export {
@@ -44,14 +52,20 @@ export {
   JANMASTHAN,
   JANMASTHAN_KEY,
   REALM,
+  REALM_LABEL,
+  HARIHAR_KSHETRA,
   OFFBOARD_CELLS,
   OFFBOARD_BANDS,
   isMahanarak,
   isNarak,
-  isDeathRealm,
   positionKey,
   type OffboardCellDef,
 } from './realms';
+export {
+  ladderListings,
+  snakeListings,
+  type PathListing,
+} from './pathListings';
 
 /** The full (placeholder) board dataset as a single object. */
 export const boardData: BoardData = {

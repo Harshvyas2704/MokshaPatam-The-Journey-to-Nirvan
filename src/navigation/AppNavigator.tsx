@@ -14,7 +14,7 @@ import {
 } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/types';
-import { GameScreen, HomeScreen } from '@/screens';
+import { GameScreen, HomeScreen, InstructionsScreen } from '@/screens';
 import { colors } from '@/constants';
 import { ROUTES } from './routes';
 
@@ -39,6 +39,10 @@ const AppNavigator: React.FC = () => {
         initialRouteName={ROUTES.Home}
         screenOptions={{ headerShown: false }}>
         <Stack.Screen name={ROUTES.Home} component={HomeScreen} />
+        <Stack.Screen
+          name={ROUTES.Instructions}
+          component={InstructionsScreen}
+        />
         <Stack.Screen name={ROUTES.Game} component={GameScreen} />
       </Stack.Navigator>
     </NavigationContainer>

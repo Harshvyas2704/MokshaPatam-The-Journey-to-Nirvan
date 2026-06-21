@@ -31,10 +31,10 @@ describe('computeBoardDimensions', () => {
   it('uses the fixed base cell size', () => {
     const bounds = { columns: 2, rows: 3 };
     const dims = computeBoardDimensions(bounds);
-    expect(dims.cellSize).toBe(96); // BOARD_LAYOUT.baseCellSize
-    expect(dims.boardWidth).toBe(192);
-    // Height includes the 2 off-board realm bands: (3 + 2) * 96.
-    expect(dims.boardHeight).toBe(480);
+    expect(dims.cellSize).toBe(64); // BOARD_LAYOUT.baseCellSize
+    expect(dims.boardWidth).toBe(128);
+    // Height includes the 2 off-board realm bands: (3 + 2) * 64.
+    expect(dims.boardHeight).toBe(320);
   });
 });
 
@@ -72,14 +72,22 @@ describe('hybrid upper section', () => {
     const c285 = byId(285); // pyramid apex — top of the board
     const c234 = byId(234); // oval ring — between the two
 
-    // Upper cells are smaller (fit to the board width) than lower cells.
-    expect(c285.size).toBeLessThan(c1.size);
-    expect(c234.size).toBeLessThan(c1.size);
+    // Every cell renders at one uniform size (upper section == lower grid).
+    expect(c285.size).toBe(c1.size);
+    expect(c234.size).toBe(c1.size);
 
     // Vertical order: apex above the oval ring, ring above the lower grid.
     expect(c285.y).toBeLessThan(c234.y);
     expect(c234.y).toBeLessThan(c1.y);
     // Cell 1 sits below the entire upper section.
     expect(c1.y).toBeGreaterThanOrEqual(layout.dimensions.upperHeight);
+
+    // The central medallion is horizontally centered, within the oval band.
+    const medallion = layout.medallion!;
+    expect(medallion).not.toBeNull();
+    const medallionCenterX = medallion.x + medallion.width / 2;
+    expect(medallionCenterX).toBeCloseTo(layout.dimensions.boardWidth / 2);
+    expect(medallion.y).toBeGreaterThan(0);
+    expect(medallion.y).toBeLessThan(layout.dimensions.upperHeight);
   });
 });

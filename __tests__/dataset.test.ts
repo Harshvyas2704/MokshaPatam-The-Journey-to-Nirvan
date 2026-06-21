@@ -7,6 +7,7 @@
  */
 import {
   boardCells,
+  COLUMN_COUNT,
   ladders,
   laddersRaw,
   offboardLadders,
@@ -37,7 +38,7 @@ describe('boardCells', () => {
   it('positions every cell within the serpentine grid', () => {
     for (const cell of boardCells) {
       expect(cell.col).toBeGreaterThanOrEqual(0);
-      expect(cell.col).toBeLessThan(8);
+      expect(cell.col).toBeLessThan(COLUMN_COUNT);
       expect(cell.row).toBeGreaterThanOrEqual(0);
     }
   });

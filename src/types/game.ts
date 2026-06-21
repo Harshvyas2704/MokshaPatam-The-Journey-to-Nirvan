@@ -87,12 +87,16 @@ export interface GameState {
   snakesEncountered: number;
   /** How many ladders the player has climbed this session. */
   laddersClimbed: number;
-  /** How many times the soul has fallen into a naraka. */
+  /** How many times the soul has fallen into a naraka (per-resolution stat). */
   narakCount: number;
-  /** How many times the soul has died (reached Maraṇa or the grave). */
-  deaths: number;
-  /** How many times the soul has been reborn (returned to janmasthan). */
-  rebirths: number;
+  /**
+   * Distinct narak episodes shown to the player: counts each ENTRY into a hell
+   * realm from the board. Moving realm→realm (e.g. महानरक → क्षुद्रनरक) without
+   * passing through janmasthan does NOT recount.
+   */
+  narakVisits: number;
+  /** Lives lived: incremented each time the soul returns to janmasthan. */
+  lives: number;
   /** Consecutive rolls spent on the grave (escape needs 4). */
   mrutyuRollCount: number;
   /** Ordered history of resolved moves. */

@@ -14,6 +14,7 @@ import { StyleSheet } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { BOARD_OVERLAY } from '@/constants';
 import { ladders, offboardSnakes, snakes } from '@/data';
+import { lerp, mixHex } from '@/utils';
 import { buildLadder, buildSnakeBody, type Point } from '../svg';
 import { getCellCenter } from '../layout';
 import type { BoardLayout } from '../types';
@@ -50,13 +51,19 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
   }, [layout]);
 
   const snakeShapes = useMemo(() => {
-    // On-board snakes + off-board snakes (numeric head -> realm cell).
-    const entries: { id: string; head: Point; tail: Point }[] = [];
+    // On-board snakes + off-board snakes (numeric head -> realm cell). `mag` is
+    // how far the soul falls; `null` for realm-bound snakes (deepest of all).
+    const entries: {
+      id: string;
+      head: Point;
+      tail: Point;
+      mag: number | null;
+    }[] = [];
     for (const s of snakes) {
       const head = centers.get(s.from);
       const tail = centers.get(s.to);
       if (head && tail) {
-        entries.push({ id: s.id, head, tail });
+        entries.push({ id: s.id, head, tail, mag: s.from - s.to });
       }
     }
     for (const s of offboardSnakes) {
@@ -66,59 +73,91 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
       const head = centers.get(s.from);
       const tail = realmCenters.get(s.to);
       if (head && tail) {
-        entries.push({ id: s.id, head, tail });
+        entries.push({ id: s.id, head, tail, mag: null }); // off-board = deepest fall
       }
     }
-    return entries
-      .map(({ id, head, tail }) => {
-        const distance = Math.hypot(tail.x - head.x, tail.y - head.y);
-        const waves = Math.max(
-          2,
-          Math.round((distance / cellSize) * BOARD_OVERLAY.snakeWavesPerCell),
-        );
-        // Unit direction head->tail, and its perpendicular, for eye placement.
-        const ux = (tail.x - head.x) / (distance || 1);
-        const uy = (tail.y - head.y) / (distance || 1);
-        return {
-          id,
-          body: buildSnakeBody(
-            head,
-            tail,
-            distance * BOARD_OVERLAY.snakeAmplitudeRatio,
-            waves,
-            headHalf,
-            tailHalf,
-          ),
+
+    // Shade each snake GREEN by drop distance (short = light, long = dark).
+    const numericMags = entries
+      .map(e => e.mag)
+      .filter((m): m is number => m !== null);
+    const minMag = numericMags.length ? Math.min(...numericMags) : 0;
+    const maxMag = numericMags.length ? Math.max(...numericMags) : 1;
+    const colorOf = (mag: number | null): string => {
+      const t = mag === null ? 1 : (mag - minMag) / (maxMag - minMag || 1);
+      const shade = lerp(BOARD_OVERLAY.pathShadeFloor, 1, t);
+      return mixHex(
+        BOARD_OVERLAY.snakeLightColor,
+        BOARD_OVERLAY.snakeDarkColor,
+        shade,
+      );
+    };
+
+    return entries.map(({ id, head, tail, mag }) => {
+      const distance = Math.hypot(tail.x - head.x, tail.y - head.y);
+      const waves = Math.max(
+        2,
+        Math.round((distance / cellSize) * BOARD_OVERLAY.snakeWavesPerCell),
+      );
+      // Unit direction head->tail, and its perpendicular, for eye placement.
+      const ux = (tail.x - head.x) / (distance || 1);
+      const uy = (tail.y - head.y) / (distance || 1);
+      return {
+        id,
+        color: colorOf(mag),
+        body: buildSnakeBody(
           head,
-          eye: {
-            x: head.x + ux * headHalf * 0.5 + -uy * headHalf * 0.42,
-            y: head.y + uy * headHalf * 0.5 + ux * headHalf * 0.42,
-          },
-        };
-      })
-      .filter((s): s is NonNullable<typeof s> => s !== null);
+          tail,
+          distance * BOARD_OVERLAY.snakeAmplitudeRatio,
+          waves,
+          headHalf,
+          tailHalf,
+        ),
+        head,
+        eye: {
+          x: head.x + ux * headHalf * 0.5 + -uy * headHalf * 0.42,
+          y: head.y + uy * headHalf * 0.5 + ux * headHalf * 0.42,
+        },
+      };
+    });
   }, [centers, realmCenters, cellSize, headHalf, tailHalf]);
 
   const ladderShapes = useMemo(() => {
-    return ladders
+    const built = ladders
       .map(ladder => {
         const base = centers.get(ladder.from);
         const top = centers.get(ladder.to);
         if (!base || !top) {
           return null;
         }
-        return {
-          id: ladder.id,
-          geometry: buildLadder(
-            base,
-            top,
-            railOffset,
-            rungSpacing,
-            BOARD_OVERLAY.maxRungs,
-          ),
-        };
+        return { id: ladder.id, mag: ladder.to - ladder.from, base, top };
       })
       .filter((l): l is NonNullable<typeof l> => l !== null);
+
+    // Shade each ladder RED by climb distance (short = light, long = dark).
+    const mags = built.map(l => l.mag);
+    const minMag = mags.length ? Math.min(...mags) : 0;
+    const maxMag = mags.length ? Math.max(...mags) : 1;
+
+    return built.map(({ id, mag, base, top }) => {
+      const t = (mag - minMag) / (maxMag - minMag || 1);
+      const shade = lerp(BOARD_OVERLAY.pathShadeFloor, 1, t);
+      return {
+        id,
+        color: mixHex(
+          BOARD_OVERLAY.ladderLightColor,
+          BOARD_OVERLAY.ladderDarkColor,
+          shade,
+        ),
+        geometry: buildLadder(
+          base,
+          top,
+          railOffset,
+          rungSpacing,
+          BOARD_OVERLAY.maxRungs,
+        ),
+      };
+    });
   }, [centers, railOffset, rungSpacing]);
 
   return (
@@ -136,7 +175,7 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
               y1={rail.y1}
               x2={rail.x2}
               y2={rail.y2}
-              stroke={BOARD_OVERLAY.ladderRail}
+              stroke={ladder.color}
               strokeWidth={ladderStroke}
               strokeLinecap="round"
               opacity={BOARD_OVERLAY.ladderOpacity}
@@ -149,7 +188,7 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
               y1={rung.y1}
               x2={rung.x2}
               y2={rung.y2}
-              stroke={BOARD_OVERLAY.ladderRung}
+              stroke={ladder.color}
               strokeWidth={ladderStroke * 0.7}
               strokeLinecap="round"
               opacity={BOARD_OVERLAY.ladderOpacity}
@@ -163,7 +202,7 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
           {/* Tapered serpent body (wide head -> thin tail). */}
           <Path
             d={snake.body}
-            fill={BOARD_OVERLAY.snakeColor}
+            fill={snake.color}
             opacity={BOARD_OVERLAY.snakeOpacity}
           />
           {/* Rounded head + a single small eye (subtle, not cartoonish). */}
@@ -171,7 +210,7 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
             cx={snake.head.x}
             cy={snake.head.y}
             r={headHalf}
-            fill={BOARD_OVERLAY.snakeColor}
+            fill={snake.color}
             opacity={BOARD_OVERLAY.snakeOpacity}
           />
           <Circle

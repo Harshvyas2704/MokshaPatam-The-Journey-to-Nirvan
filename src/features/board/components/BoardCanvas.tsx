@@ -11,6 +11,7 @@ import { StyleSheet, View } from 'react-native';
 import { SoulTokenLayer } from '@/features/player';
 import type { BoardLayout } from '../types';
 import { BoardCellView } from './BoardCellView';
+import { MedallionView } from './MedallionView';
 import { OffboardCellView } from './OffboardCellView';
 import { SnakesLaddersLayer } from './SnakesLaddersLayer';
 
@@ -43,6 +44,9 @@ const BoardCanvasComponent: React.FC<BoardCanvasProps> = ({
       {/* Snakes & ladders sit above the cells, below the soul token.
           Hidden in the board-only view so the squares can be read clearly. */}
       {showOverlay ? <SnakesLaddersLayer layout={layout} /> : null}
+      {/* The sacred हरिहर क्षेत्र medallion at the heart of the oval ring,
+          above the snake/ladder lines so they read as passing behind it. */}
+      {layout.medallion ? <MedallionView box={layout.medallion} /> : null}
       {/* The soul token rides on top, within the same transform. */}
       <SoulTokenLayer layout={layout} />
     </View>

@@ -4,12 +4,14 @@
  * Converts the dataset's device-independent grid into responsive pixel
  * coordinates. The board is a HYBRID:
  *
- *   - Lower section (cells 1..233): a dense 8-wide serpentine grid. Row 0
+ *   - Lower section (cells 1..233): a dense 14-wide serpentine grid. Row 0
  *     (cell 1, the soul's birth) sits at the BOTTOM; the journey climbs upward.
  *   - Upper section (cells 234..285): a SPARSE, non-grid arrangement matching
  *     the traditional board — an oval ring of "loka" cells (234..248) and a
- *     centred pyramid of the highest realms (249..285) at the very top. These
- *     are fit to the same board width, so their cells render a little smaller.
+ *     centred pyramid of the highest realms (249..285) at the very top.
+ *
+ * Every cell renders at one UNIFORM size (`baseCellSize`), lower grid and upper
+ * section alike.
  *
  * No React, no side effects — fully unit-testable.
  */
@@ -43,13 +45,13 @@ const PYRAMID_ROWS: readonly (readonly number[])[] = [
   [260, 259, 258, 257, 256, 255, 254, 253, 252, 251, 250, 249],
 ];
 
-/** Columns the upper section is sized against (its widest pyramid row). */
-const UPPER_COLUMNS = 12;
 /** Vertical rows reserved for the oval ring, in upper-cell units. */
 const OVAL_BAND_ROWS = 6;
 /** Oval ring radii as a fraction of the board width / oval band height. */
 const OVAL_RADIUS_X_RATIO = 0.4;
 const OVAL_RADIUS_Y_RATIO = 0.4;
+/** Central medallion edge length relative to a normal cell (a little bigger). */
+const MEDALLION_CELL_SCALE = 1.4;
 
 /** Whether a set of cells contains the sparse upper section. */
 function hasUpperSection(cells: BoardCell[]): boolean {
@@ -82,9 +84,9 @@ export function computeBoardBounds(cells: BoardCell[]): BoardBounds {
 /**
  * Compute pixel dimensions for the board.
  *
- * Each lower cell has a FIXED on-screen size at 100% zoom (`baseCellSize`). The
- * upper section is fit to the same board width across `UPPER_COLUMNS`, so its
- * cells are smaller and it reserves `upperHeight` of vertical space at the top.
+ * Every cell has the SAME fixed on-screen size at 100% zoom (`baseCellSize`) —
+ * the upper section uses the same `upperCell` as the lower grid, and reserves
+ * `upperHeight` of vertical space at the top for the oval ring + pyramid.
  */
 export function computeBoardDimensions(
   bounds: BoardBounds,
@@ -92,7 +94,8 @@ export function computeBoardDimensions(
 ): BoardDimensions {
   const cellSize = BOARD_LAYOUT.baseCellSize;
   const boardWidth = cellSize * bounds.columns;
-  const upperCell = hasUpper ? boardWidth / UPPER_COLUMNS : 0;
+  // Uniform sizing: upper-section cells are the same size as lower-grid cells.
+  const upperCell = hasUpper ? cellSize : 0;
   const upperHeight = hasUpper
     ? (PYRAMID_ROWS.length + OVAL_BAND_ROWS) * upperCell
     : 0;
@@ -192,6 +195,27 @@ export function layoutUpper(
   return result;
 }
 
+/**
+ * The sacred central medallion (हरिहर क्षेत्र) sits at the heart of the oval
+ * ring. Returns its absolute box, or null when there is no upper section.
+ */
+export function computeMedallion(
+  dimensions: BoardDimensions,
+): { x: number; y: number; width: number; height: number } | null {
+  const { boardWidth, upperCell } = dimensions;
+  if (upperCell <= 0) {
+    return null;
+  }
+  const pyramidHeight = PYRAMID_ROWS.length * upperCell;
+  const ovalBandHeight = OVAL_BAND_ROWS * upperCell;
+  // Same center the oval ring is built around (see layoutUpper).
+  const cx = boardWidth / 2;
+  const cy = pyramidHeight + ovalBandHeight / 2;
+  // A square the size of a cell, just a little bigger.
+  const size = upperCell * MEDALLION_CELL_SCALE;
+  return { x: cx - size / 2, y: cy - size / 2, width: size, height: size };
+}
+
 /** Place the off-board realm cells in the band(s) below the grid. */
 export function layoutOffboard(
   dimensions: BoardDimensions,
@@ -218,5 +242,6 @@ export function computeBoardLayout(cells: BoardCell[]): BoardLayout {
     ...layoutUpper(cells, dimensions),
   ];
   const offboardCells = layoutOffboard(dimensions);
-  return { dimensions, positionedCells, offboardCells };
+  const medallion = computeMedallion(dimensions);
+  return { dimensions, positionedCells, offboardCells, medallion };
 }

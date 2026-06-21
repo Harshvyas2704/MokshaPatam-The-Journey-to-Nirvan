@@ -13,7 +13,7 @@ import { colors, spacing, typography, radius } from '@/constants';
 
 const HomeScreen: React.FC<RootStackScreenProps<'Home'>> = ({ navigation }) => {
   const onBegin = useCallback(() => {
-    navigation.navigate(ROUTES.Game);
+    navigation.navigate(ROUTES.Instructions);
   }, [navigation]);
 
   return (

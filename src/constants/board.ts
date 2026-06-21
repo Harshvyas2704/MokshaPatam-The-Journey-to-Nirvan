@@ -52,12 +52,12 @@ export const BOARD_LAYOUT = {
   /** Outer padding (px) reserved around the board inside its container. */
   padding: 12,
   /**
-   * Fixed on-screen size (px) of a single cell at 100% zoom. Large enough to
-   * show the Sanskrit name + number clearly when zoomed in; the board is then
-   * scrolled/zoomed (the whole board is fit-to-screen by default). Zoom scales
-   * this visually, so it defines the "readable detail" level rather than fit.
+   * Fixed on-screen size (px) of a single cell at 100% zoom — uniform across
+   * the whole board (lower grid AND the scattered upper section). Compact so a
+   * 14-wide row fits the journey densely; the board is then scrolled/zoomed,
+   * so this defines the "readable detail" level rather than fit.
    */
-  baseCellSize: 96,
+  baseCellSize: 64,
   /** Gap (px) inset on each side of a cell tile within its grid slot. */
   cellInset: 2,
 } as const;
@@ -70,7 +70,7 @@ export const BOARD_ZOOM = {
   maxScale: 4,
   /**
    * Hard floor for the minimum scale. Low enough that the whole tall board
-   * (8 × 36 large cells) can fit on screen when the user pinches out.
+   * (14-wide grid + scattered upper section) can fit on screen when pinched out.
    */
   minScaleFloor: 0.05,
   /**
@@ -93,6 +93,18 @@ export const BOARD_OVERLAY = {
   ladderRail: '#B06A3B',
   /** Ladder rung color. */
   ladderRung: '#C9A227',
+
+  /**
+   * Magnitude-based PATH shading. Each path is tinted along a light→dark ramp
+   * by how far it carries the soul: a longer ladder climb / snake drop renders
+   * darker, a short one lighter. (Ladders ramp in RED, snakes in GREEN.)
+   */
+  ladderLightColor: '#D99A91', // short climb — light red
+  ladderDarkColor: '#7C2118', // long climb — deep red
+  snakeLightColor: '#9FC68C', // short drop — light green
+  snakeDarkColor: '#2C5320', // long drop — deep green
+  /** Floor for the ramp so even the shortest path keeps a touch of tint. */
+  pathShadeFloor: 0.18,
 
   // Both snakes and ladders are kept faint + thin so the CELLS stay the hero.
   /** Rail / rung width relative to cell size. */

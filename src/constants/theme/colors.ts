@@ -40,6 +40,12 @@ export const colors = {
   cellText: '#3E2A1C', // dark ink for light tiles
   cellTextMuted: '#7A6048',
 
+  // Central sacred medallion (Harihar Kshetra) — calm temple blue.
+  medallionBg: '#E6F0F7',
+  medallionBorder: '#6E9FC9',
+  medallionText: '#2F5E8C',
+  medallionMuted: '#5E83A8',
+
   // Soul token — a small blue flame (hot white-blue core, blue aura).
   soul: '#E6F2FF',
   soulAura: '#4FA3FF',

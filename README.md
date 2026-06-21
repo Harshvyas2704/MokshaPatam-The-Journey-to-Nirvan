@@ -1,97 +1,131 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Mokshapat — Journey to Nirvan
 
-# Getting Started
+A faithful, premium digital recreation of **Mokshapat** (also called _Kaivalyapat_, "The Chart of Liberation") — the ancient Indian spiritual board game in the tradition of Saint Dnyaneshwar, and the philosophical ancestor of modern Snakes & Ladders.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+The board is not a generic grid: it is a 285-square journey of the soul from **Manushyaloka** (the human realm) toward **Moksha** (liberation). Snakes are spiritual falls (ignorance, attachment, ego); ladders are spiritual ascents (wisdom, devotion, service). The experience aims to feel sacred, calm, and meaningful — not arcade-like.
 
-## Step 1: Start Metro
+> Built with React Native CLI + TypeScript, with a data-driven board, a Zustand game engine, and Reanimated animations running on the UI thread for smooth 60fps interaction.
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+---
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+## ✨ Features
 
-```sh
-# Using npm
-npm start
+- **285-square spiritual board** with a hybrid layout — a dense 14-wide serpentine lower grid plus a sparse, scattered upper section (an oval ring of _loka_ cells and a centred pyramid of the highest realms), crowned by the central **हरिहर क्षेत्र (Harihar Kshetra)** medallion.
+- **Authentic snakes, ladders & realms** — including off-board hells (_Mahanarak_, _Kshudranarak_), death (_Mrityu_ / the grave), and celestial _lokas_, with faithful escape and rebirth rules.
+- **The soul token** — a luminous, breathing orb (no emoji/avatars) that moves square-by-square, never teleporting.
+- **Pinch-zoom & pan** board viewport with fixed controls; manual roll and auto-roll, with a move-history log.
+- **Counters** — _Narak_ visits (entries into a hell realm) and _Lives_ (returns to janmasthan).
+- **Conditional path coloring** — snakes/ladders shaded light→dark by how far they carry the soul; cells tinted by role.
+- **Board-only view** toggle to hide snakes & ladders and read the squares clearly.
+- **Instructions screen** with the game's rules, philosophy, and a full ladder/snake listing.
+- **Reduced-motion aware**, accessibility labels, and a heritage visual theme (saffron, maroon, gold, copper, ivory).
 
-# OR using Yarn
-yarn start
+---
+
+## 🧱 Tech Stack
+
+| Concern        | Choice                               |
+| -------------- | ------------------------------------ |
+| Framework      | React Native CLI `0.83` · React `19` |
+| Language       | TypeScript (strict)                  |
+| State          | Zustand                              |
+| Animation      | React Native Reanimated (+ Worklets) |
+| Gestures       | React Native Gesture Handler         |
+| Vector drawing | React Native SVG                     |
+| Navigation     | React Navigation (native stack)      |
+| Layout safety  | React Native Safe Area Context       |
+| Testing        | Jest · react-test-renderer           |
+
+Path alias `@/*` → `src/*` (via `babel-plugin-module-resolver` + `tsconfig`).
+
+---
+
+## 📁 Project Structure
+
+Feature-first architecture — UI never hardcodes board positions or game logic; both are data-driven and pure.
+
+```
+src/
+├── assets/          # fonts, images
+├── components/      # shared, presentational components
+├── constants/       # theme (colors, spacing, typography), board + layout constants
+├── data/            # the dataset: cells, snakes, ladders, realms, instructions (pure)
+├── features/
+│   ├── board/       # layout engine, renderer, cells, snakes/ladders overlay, medallion
+│   ├── game/        # dice, controls, move history
+│   ├── moksha/      # spiritual-event glyphs & modals
+│   └── player/      # the soul token + its movement
+├── hooks/
+├── navigation/      # routes + native-stack navigator
+├── screens/         # Home → Instructions → Game
+├── store/           # Zustand game store
+├── types/           # domain + navigation types
+└── utils/           # pure helpers (math, color)
 ```
 
-## Step 2: Build and run your app
+Key idea: the **layout engine** (`src/features/board/layout`) converts the dataset's device-independent `row`/`col` grid into responsive pixel coordinates, and the **move logic** (`src/features/game/logic`) resolves dice rolls, snakes, ladders, and realm transitions as pure functions. Both are unit-tested independently of React.
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+---
 
-### Android
+## 🚀 Getting Started
+
+> Complete the official [React Native environment setup](https://reactnative.dev/docs/set-up-your-environment) first (Xcode / Android Studio, JDK, etc.). Requires **Node ≥ 20**.
+
+### 1. Install dependencies
 
 ```sh
-# Using npm
+npm install
+```
+
+### 2. iOS only — install pods
+
+```sh
+cd ios && bundle install && bundle exec pod install && cd ..
+```
+
+### 3. Start Metro
+
+```sh
+npm start
+```
+
+### 4. Run the app
+
+```sh
+# Android
 npm run android
 
-# OR using Yarn
-yarn android
-```
-
-### iOS
-
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
-```sh
-bundle install
-```
-
-Then, and every time you update your native dependencies, run:
-
-```sh
-bundle exec pod install
-```
-
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
-
-```sh
-# Using npm
+# iOS
 npm run ios
-
-# OR using Yarn
-yarn ios
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+---
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+## 🧪 Quality
 
-## Step 3: Modify your app
+```sh
+npm test          # Jest unit tests (layout, movement, counters, dataset, …)
+npm run lint      # ESLint
+npx tsc --noEmit  # TypeScript type-check
+```
 
-Now that you have successfully run the app, let's make changes!
+The pure modules (board layout, move resolution, counters, path listings, overlay geometry, zoom math) are covered by fast, framework-free unit tests.
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+---
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+## 🎮 How to Play
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+1. Begin at **Janmasthan** and enter the board at square 1 (the human realm).
+2. Roll the dice and move forward, climbing toward **285 (Moksha)**.
+3. **Ladders** carry the soul upward (virtue, devotion); **snakes** drop it downward (ego, delusion).
+4. Some snakes lead **off-board** into hells; escape rules return the soul through _Kshudranarak_ back to _Janmasthan_ (a new life), while the grave (_Mrityu_) holds the soul for several turns.
+5. Reaching square **285** attains liberation.
 
-## Congratulations! :tada:
+Play with detachment — the game is meant as a contemplative practice, not a race.
 
-You've successfully run and modified your React Native App. :partying_face:
+---
 
-### Now what?
+## 🙏 Credits
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
-
-# Troubleshooting
-
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
-
-# Learn More
-
-To learn more about React Native, take a look at the following resources:
-
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+Game concept and dataset rooted in the traditional Mokshapat / Kaivalyapat board.
+Rebuilt with ❤️ by **Harsh Vyas**.

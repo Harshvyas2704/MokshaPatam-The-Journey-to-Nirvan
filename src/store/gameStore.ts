@@ -12,7 +12,7 @@
  */
 import { create } from 'zustand';
 import type { GameState, Position } from '@/types';
-import { isDeathRealm, JANMASTHAN } from '@/data';
+import { JANMASTHAN } from '@/data';
 import { resolveMove, rollDie } from '@/features/game/logic';
 
 /** The initial, freshly-born game state (at janmasthan). */
@@ -29,8 +29,8 @@ export const initialGameState: GameState = {
   snakesEncountered: 0,
   laddersClimbed: 0,
   narakCount: 0,
-  deaths: 0,
-  rebirths: 0,
+  narakVisits: 0,
+  lives: 0,
   mrutyuRollCount: 0,
   moveHistory: [],
 };
@@ -68,13 +68,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       : state.currentSquare;
     const realm = landedNumeric ? null : (move.to as string);
 
-    // Death: the soul reaches a death realm it wasn't already in.
-    const died =
-      typeof move.to === 'string' &&
-      isDeathRealm(move.to) &&
-      move.from !== move.to;
-    // Rebirth: the soul returns to janmasthan (0) from somewhere else.
-    const reborn = move.to === JANMASTHAN && move.from !== JANMASTHAN;
+    // Narak visit: the soul ENTERS a hell realm from the board (a numeric
+    // square or janmasthan). A realm→realm move (e.g. महानरक → क्षुद्रनरक) keeps
+    // `from` a string, so it is not recounted until the soul has been reborn.
+    const enteredNarak =
+      typeof move.to === 'string' && typeof move.from !== 'string';
+    // A new life: the soul returns to janmasthan (0) from anywhere else.
+    const returnedToBirth =
+      move.to === JANMASTHAN && move.from !== JANMASTHAN;
 
     set(s => ({
       diceValue: dice,
@@ -87,8 +88,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       snakesEncountered: s.snakesEncountered + resolved.snake,
       laddersClimbed: s.laddersClimbed + resolved.ladder,
       narakCount: s.narakCount + resolved.narak,
-      deaths: s.deaths + (died ? 1 : 0),
-      rebirths: s.rebirths + (reborn ? 1 : 0),
+      narakVisits: s.narakVisits + (enteredNarak ? 1 : 0),
+      lives: s.lives + (returnedToBirth ? 1 : 0),
       mrutyuRollCount: resolved.mrutyuRollCount,
       gameStatus: resolved.won ? 'won' : 'playing',
       moveHistory: [

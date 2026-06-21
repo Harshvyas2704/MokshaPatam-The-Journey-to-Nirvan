@@ -9,11 +9,13 @@ import type { RouteName } from '@/types';
 
 export const ROUTES = {
   Home: 'Home',
+  Instructions: 'Instructions',
   Game: 'Game',
 } as const satisfies Record<string, RouteName>;
 
 /** Human-readable titles per route (for headers / accessibility). */
 export const routeTitles: Record<RouteName, string> = {
   Home: 'Mokshapat',
+  Instructions: 'Game Introduction',
   Game: 'Journey to Nirvan',
 };

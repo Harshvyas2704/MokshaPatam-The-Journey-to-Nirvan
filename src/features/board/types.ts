@@ -56,10 +56,20 @@ export interface PositionedOffboardCell {
   size: number;
 }
 
+/** Absolute box of the central sacred medallion (हरिहर क्षेत्र). */
+export interface MedallionBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 /** The complete output of the layout engine. */
 export interface BoardLayout {
   dimensions: BoardDimensions;
   positionedCells: PositionedCell[];
   /** Realm / janmasthan cells in the band below the board. */
   offboardCells: PositionedOffboardCell[];
+  /** Central medallion at the heart of the oval ring; null without it. */
+  medallion: MedallionBox | null;
 }

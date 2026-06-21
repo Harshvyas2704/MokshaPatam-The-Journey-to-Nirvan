@@ -25,6 +25,26 @@ export const REALM = {
   atmaparibhan: 'आत्मपरिभाण लोक',
 } as const;
 
+/** The sacred central medallion at the heart of the upper oval ring. */
+export const HARIHAR_KSHETRA = {
+  sanskrit: 'हरिहर क्षेत्र',
+  english: 'Harihar Kshetra',
+  mantra: 'ॐ नमः शिवाय · ॐ नमो विष्णवे',
+} as const;
+
+/** Short English label for each realm (for listings / legends). */
+export const REALM_LABEL: Record<string, string> = {
+  [REALM.mahanarak]: 'Mahanarak',
+  [REALM.mahanarakLeft]: 'Mahanarak',
+  [REALM.mahanarakRight]: 'Mahanarak',
+  [REALM.kshudranarak]: 'Kshudranarak',
+  [REALM.maran]: 'Mrityu',
+  [REALM.grave]: 'Grave',
+  [REALM.behesht]: 'Behasta Lok',
+  [REALM.shunya]: 'Shunya Lok',
+  [REALM.atmaparibhan]: 'Atmaparibhan Lok',
+};
+
 /** The three great-hell variants count as "mahanarak" for the escape rule. */
 const MAHANARAK_SET = new Set<string>([
   REALM.mahanarak,
@@ -39,14 +59,6 @@ export function isMahanarak(realm: string): boolean {
 /** A realm reached off-board increments the naraka counter if it's a hell/grave. */
 export function isNarak(realm: string): boolean {
   return MAHANARAK_SET.has(realm) || realm === REALM.grave;
-}
-
-/** The realms that represent literal death (the death node and the grave). */
-const DEATH_REALMS = new Set<string>([REALM.maran, REALM.grave]);
-
-/** Whether landing here counts as a "death" (Maraṇa / the grave). */
-export function isDeathRealm(realm: string): boolean {
-  return DEATH_REALMS.has(realm);
 }
 
 /**
