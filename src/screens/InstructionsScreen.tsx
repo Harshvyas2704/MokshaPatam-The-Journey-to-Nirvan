@@ -4,11 +4,13 @@
  * philosophy of Mokshapat. Content is data-driven (see `@/data/instructions`);
  * this screen is a thin, modest renderer.
  */
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ROUTES } from '@/navigation/routes';
-import type { RootStackScreenProps } from '@/types';
+import type { PlayerConfig, RootStackScreenProps } from '@/types';
+import { useGameStore } from '@/store';
+import { PlayerSetupModal } from '@/features/game';
 import {
   INSTRUCTION_SECTIONS,
   INSTRUCTIONS_CREDIT,
@@ -76,9 +78,19 @@ const PathSection: React.FC<{
 const InstructionsScreen: React.FC<RootStackScreenProps<'Instructions'>> = ({
   navigation,
 }) => {
-  const onStart = useCallback(() => {
-    navigation.navigate(ROUTES.Game);
-  }, [navigation]);
+  const startGame = useGameStore(state => state.startGame);
+  const [setupOpen, setSetupOpen] = useState(false);
+
+  const onOpenSetup = useCallback(() => setSetupOpen(true), []);
+  const onCloseSetup = useCallback(() => setSetupOpen(false), []);
+  const onStart = useCallback(
+    (configs: PlayerConfig[]) => {
+      startGame(configs);
+      setSetupOpen(false);
+      navigation.navigate(ROUTES.Game);
+    },
+    [startGame, navigation],
+  );
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -117,7 +129,7 @@ const InstructionsScreen: React.FC<RootStackScreenProps<'Instructions'>> = ({
 
         <TouchableOpacity
           style={styles.cta}
-          onPress={onStart}
+          onPress={onOpenSetup}
           accessibilityRole="button"
           accessibilityLabel="Start the game">
           <Text style={styles.ctaLabel}>{INSTRUCTIONS_CTA}</Text>
@@ -125,6 +137,12 @@ const InstructionsScreen: React.FC<RootStackScreenProps<'Instructions'>> = ({
 
         <Text style={styles.credit}>{INSTRUCTIONS_CREDIT}</Text>
       </ScrollView>
+
+      <PlayerSetupModal
+        visible={setupOpen}
+        onClose={onCloseSetup}
+        onStart={onStart}
+      />
     </SafeAreaView>
   );
 };

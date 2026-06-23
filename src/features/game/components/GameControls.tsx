@@ -1,10 +1,9 @@
 /**
  * GameControls — the fixed control bar below the board.
  *
- * Provides the two play modes:
- *   1. "Roll the Dice"  — a single manual roll.
- *   2. "Auto Roll"      — automatically rolls until the soul reaches Moksha.
- * Plus a Reset, the current dice face, and a status line.
+ * Shows whose turn it is, that player's details (position, Narak, Lives), and a
+ * compact strip of all players. Provides the two play modes (manual roll, auto
+ * roll), a Reset, the current dice face, and the move history.
  *
  * These controls stay fixed; only the board zooms/pans.
  */
@@ -16,8 +15,16 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
-import { colors, GOAL_SQUARE, radius, spacing, typography } from '@/constants';
+import {
+  colors,
+  GOAL_SQUARE,
+  radius,
+  SOUL_COLORS,
+  spacing,
+  typography,
+} from '@/constants';
 import { useGameStore } from '@/store';
+import type { PlayerState } from '@/types';
 import { useAutoPlay } from '../hooks/useAutoPlay';
 import { Dice } from './Dice';
 import { HistoryModal } from './HistoryModal';
@@ -56,24 +63,81 @@ const ControlButton: React.FC<ControlButtonProps> = ({
   </TouchableOpacity>
 );
 
+/** A small colored dot for a player's soul color. */
+const ColorDot: React.FC<{ colorId: number; size?: number }> = ({
+  colorId,
+  size = 12,
+}) => {
+  const color = SOUL_COLORS[colorId] ?? SOUL_COLORS[0];
+  return (
+    <View
+      style={[
+        styles.colorDot,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: color.aura,
+          borderColor: color.core,
+        },
+      ]}
+    />
+  );
+};
+
+const RANK_MEDAL = ['🥇', '🥈', '🥉'];
+
+/** Where a player currently is, as a short label. */
+function positionLabel(player: PlayerState): string {
+  if (player.finished) {
+    return 'Moksha';
+  }
+  if (player.realm) {
+    return player.realm;
+  }
+  return player.currentSquare === 0
+    ? 'Janmasthan'
+    : `Square ${player.currentSquare}`;
+}
+
+/** One chip in the all-players strip. */
+const PlayerChip: React.FC<{ player: PlayerState; isCurrent: boolean }> = ({
+  player,
+  isCurrent,
+}) => (
+  <View style={[styles.chip, isCurrent && styles.chipCurrent]}>
+    <ColorDot colorId={player.colorId} size={10} />
+    <Text style={styles.chipName} numberOfLines={1}>
+      {player.name}
+    </Text>
+    <Text style={styles.chipPos}>
+      {player.finished
+        ? (RANK_MEDAL[(player.rank ?? 1) - 1] ?? `#${player.rank}`)
+        : player.currentSquare === 0
+        ? '·'
+        : player.currentSquare}
+    </Text>
+  </View>
+);
+
 const GameControls: React.FC = () => {
   useAutoPlay();
 
   const diceValue = useGameStore(state => state.diceValue);
-  const currentSquare = useGameStore(state => state.currentSquare);
-  const realm = useGameStore(state => state.realm);
+  const players = useGameStore(state => state.players);
+  const currentPlayerIndex = useGameStore(state => state.currentPlayerIndex);
   const gameStatus = useGameStore(state => state.gameStatus);
   const isAutoPlaying = useGameStore(state => state.isAutoPlaying);
   const isMoving = useGameStore(state => state.isMoving);
+  const pendingAdvance = useGameStore(state => state.pendingAdvance);
   const totalRolls = useGameStore(state => state.totalRolls);
-  const narakVisits = useGameStore(state => state.narakVisits);
-  const lives = useGameStore(state => state.lives);
   const rollDice = useGameStore(state => state.rollDice);
   const setAutoPlay = useGameStore(state => state.setAutoPlay);
   const reset = useGameStore(state => state.reset);
 
   const [historyOpen, setHistoryOpen] = useState(false);
   const hasWon = gameStatus === 'won';
+  const current = players[currentPlayerIndex] ?? players[0];
 
   const onRoll = useCallback(() => rollDice(), [rollDice]);
   const onToggleAuto = useCallback(
@@ -84,17 +148,28 @@ const GameControls: React.FC = () => {
   const onOpenHistory = useCallback(() => setHistoryOpen(true), []);
   const onCloseHistory = useCallback(() => setHistoryOpen(false), []);
 
-  // Where the soul currently is, for the status line.
-  const positionLabel = hasWon
-    ? 'Moksha attained'
-    : realm
-    ? realm // an off-board realm (e.g. महानरक)
-    : currentSquare === 0
-    ? 'Janmasthan'
-    : `Square ${currentSquare} of ${GOAL_SQUARE}`;
+  // Rolling a 6 grants another roll (turn hasn't advanced).
+  const rollAgain =
+    !hasWon && !isMoving && diceValue === 6 && !pendingAdvance && totalRolls > 0;
+
+  const turnLabel = hasWon
+    ? '🌸 All souls liberated'
+    : rollAgain
+    ? `${current.name} — rolled a 6, roll again!`
+    : `${current.name} — your turn`;
 
   return (
     <View style={styles.container}>
+      <View style={styles.turnRow}>
+        {!hasWon ? <ColorDot colorId={current.colorId} /> : null}
+        <Text
+          style={styles.turnLabel}
+          numberOfLines={1}
+          accessibilityLiveRegion="polite">
+          {turnLabel}
+        </Text>
+      </View>
+
       <View style={styles.row}>
         <Dice value={diceValue} />
         <View style={styles.buttons}>
@@ -102,7 +177,7 @@ const GameControls: React.FC = () => {
             label="Roll the Dice"
             onPress={onRoll}
             disabled={hasWon || isAutoPlaying || isMoving}
-            hint="Rolls the dice once and moves the soul"
+            hint="Rolls the dice once and moves the current soul"
           />
           <ControlButton
             label={isAutoPlaying ? 'Stop' : 'Auto Roll'}
@@ -112,7 +187,7 @@ const GameControls: React.FC = () => {
             hint={
               isAutoPlaying
                 ? 'Stops automatic rolling'
-                : 'Rolls automatically until Moksha is reached'
+                : 'Rolls automatically, passing each turn, until all are liberated'
             }
           />
         </View>
@@ -123,7 +198,7 @@ const GameControls: React.FC = () => {
           style={styles.status}
           accessibilityRole="text"
           accessibilityLiveRegion="polite">
-          {`${positionLabel} · ${totalRolls} moves`}
+          {`${positionLabel(current)} of ${GOAL_SQUARE} · ${totalRolls} moves`}
         </Text>
         <View style={styles.statusActions}>
           <TouchableOpacity
@@ -144,13 +219,25 @@ const GameControls: React.FC = () => {
       <View style={styles.countersRow}>
         <Text
           style={styles.counter}
-          accessibilityLabel={`${narakVisits} narak visits`}>
-          {`☠  Narak  ${narakVisits}`}
+          accessibilityLabel={`${current.narakVisits} narak visits`}>
+          {`☠  Narak  ${current.narakVisits}`}
         </Text>
-        <Text style={styles.counter} accessibilityLabel={`${lives} lives`}>
-          {`↻  Lives  ${lives}`}
+        <Text style={styles.counter} accessibilityLabel={`${current.lives} lives`}>
+          {`↻  Lives  ${current.lives}`}
         </Text>
       </View>
+
+      {players.length > 1 ? (
+        <View style={styles.playersStrip}>
+          {players.map(player => (
+            <PlayerChip
+              key={player.id}
+              player={player}
+              isCurrent={!hasWon && player.id === current.id}
+            />
+          ))}
+        </View>
+      ) : null}
 
       <HistoryModal visible={historyOpen} onClose={onCloseHistory} />
     </View>
@@ -165,6 +252,22 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     backgroundColor: colors.surface,
+  },
+  colorDot: {
+    borderWidth: 1,
+  },
+  turnRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  turnLabel: {
+    flex: 1,
+    color: colors.gold,
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.semibold,
+    fontFamily: typography.fontFamily.primary,
   },
   row: {
     flexDirection: 'row',
@@ -241,6 +344,38 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: typography.fontSize.sm,
     fontWeight: typography.fontWeight.medium,
+    fontFamily: typography.fontFamily.primary,
+  },
+  playersStrip: {
+    marginTop: spacing.sm,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceMuted,
+  },
+  chipCurrent: {
+    borderColor: colors.gold,
+  },
+  chipName: {
+    maxWidth: 90,
+    color: colors.textSecondary,
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.primary,
+  },
+  chipPos: {
+    color: colors.textPrimary,
+    fontSize: typography.fontSize.xs,
+    fontWeight: typography.fontWeight.semibold,
     fontFamily: typography.fontFamily.primary,
   },
 });

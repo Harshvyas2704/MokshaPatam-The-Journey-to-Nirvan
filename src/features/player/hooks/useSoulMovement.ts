@@ -1,15 +1,17 @@
 /**
- * useSoulMovement
+ * useSoulMovement (per player)
  *
- * Drives the soul token's animated position. The store commits the logical
- * result of a move immediately and records it as `lastMove`; this hook plays the
- * VISUAL journey: it animates the token square-by-square along the move's walk
- * path, then performs the snake/ladder/realm jump as a final eased segment —
- * never teleporting.
+ * Drives one player's soul token. The store commits the logical result of a
+ * move immediately and records it as `lastMove` (+ `lastMovePlayerId`); this
+ * hook plays the VISUAL journey for the ACTIVE player — animating square-by-
+ * square along the walk path, then the snake/ladder/realm jump — never
+ * teleporting. Tokens that aren't the active mover simply rest on their cell.
  *
- * Positions can be numbered squares OR off-board realms (incl. janmasthan), so
- * the center map is keyed by the position key. Clears `isMoving` when done
- * (including blocked moves that don't animate at all).
+ * When the turn switches to a different player, the token first HOLDS in place
+ * for `prePanMs` (while the camera glides to it), then moves — so the board
+ * "scrolls there first, then starts the soul's motion".
+ *
+ * Only the active token clears `isMoving` when its animation finishes.
  */
 import { useEffect, useMemo, useRef } from 'react';
 import {
@@ -26,6 +28,7 @@ import { SOUL_MOVEMENT } from '@/constants';
 import { positionKey } from '@/data';
 import { useGameStore } from '@/store';
 import { getMovePath } from '@/features/game/logic/movement';
+import type { PlayerState } from '@/types';
 import type { BoardLayout } from '@/features/board/types';
 import { getSoulCenter } from '../positioning';
 
@@ -35,15 +38,19 @@ interface Point {
 }
 
 export function useSoulMovement(
+  player: PlayerState,
   layout: BoardLayout,
   boxSize: number,
+  offset: Point = { x: 0, y: 0 },
 ): AnimatedStyle {
-  const currentSquare = useGameStore(state => state.currentSquare);
-  const realm = useGameStore(state => state.realm);
   const lastMove = useGameStore(state => state.lastMove);
+  const lastMovePlayerId = useGameStore(state => state.lastMovePlayerId);
+  const turnSwitched = useGameStore(state => state.lastMoveTurnSwitched);
   const totalRolls = useGameStore(state => state.totalRolls);
   const setMoving = useGameStore(state => state.setMoving);
   const reduceMotion = useReducedMotion();
+
+  const isActive = lastMovePlayerId === player.id;
 
   // Position key (square id, realm string, or JANMASTHAN) -> pixel center.
   const centers = useMemo(() => {
@@ -58,16 +65,17 @@ export function useSoulMovement(
     return map;
   }, [layout]);
 
-  const posKey = positionKey(realm ?? currentSquare);
+  const posKey = positionKey(player.realm ?? player.currentSquare);
   const start = centers.get(posKey);
   const translateX = useSharedValue(start ? start.x : 0);
   const translateY = useSharedValue(start ? start.y : 0);
   const animatedRollId = useRef<number | null>(null);
 
-  // Snap to the current position when idle (no pending move) — e.g. after reset.
+  // Idle: when this token is NOT the active mover (or before any move), pin it
+  // to its resting cell. Re-snaps if the player's position changes.
   useEffect(() => {
-    if (lastMove) {
-      return;
+    if (lastMove && isActive) {
+      return; // the active token is being animated by the effect below
     }
     const center = centers.get(posKey);
     if (center) {
@@ -75,11 +83,11 @@ export function useSoulMovement(
       translateY.value = center.y;
     }
     animatedRollId.current = null;
-  }, [lastMove, centers, posKey, translateX, translateY]);
+  }, [lastMove, isActive, centers, posKey, translateX, translateY]);
 
-  // Play the walk + jump whenever a new move is recorded.
+  // Play the (optional pre-pan hold +) walk + jump for the active mover's roll.
   useEffect(() => {
-    if (!lastMove || animatedRollId.current === totalRolls) {
+    if (!lastMove || !isActive || animatedRollId.current === totalRolls) {
       return;
     }
     const from = centers.get(positionKey(lastMove.from));
@@ -123,27 +131,35 @@ export function useSoulMovement(
             easing: Easing.inOut(Easing.ease),
           };
 
-    translateX.value = withSequence(
-      ...targets.map((p, i) => withTiming(p.x, timing(i))),
-    );
-    translateY.value = withSequence(
-      ...targets.map((p, i) =>
-        withTiming(
-          p.y,
-          timing(i),
-          i === lastIndex
-            ? (finished?: boolean) => {
-                'worklet';
-                if (finished) {
-                  runOnJS(setMoving)(false);
-                }
+    // On a turn switch, hold at the start while the camera glides over.
+    const hold = { duration: SOUL_MOVEMENT.prePanMs, easing: Easing.linear };
+    const xSteps = targets.map((p, i) => withTiming(p.x, timing(i)));
+    const ySteps = targets.map((p, i) =>
+      withTiming(
+        p.y,
+        timing(i),
+        i === lastIndex
+          ? (finished?: boolean) => {
+              'worklet';
+              if (finished) {
+                runOnJS(setMoving)(false);
               }
-            : undefined,
-        ),
+            }
+          : undefined,
       ),
     );
+
+    if (turnSwitched) {
+      translateX.value = withSequence(withTiming(from.x, hold), ...xSteps);
+      translateY.value = withSequence(withTiming(from.y, hold), ...ySteps);
+    } else {
+      translateX.value = withSequence(...xSteps);
+      translateY.value = withSequence(...ySteps);
+    }
   }, [
     lastMove,
+    isActive,
+    turnSwitched,
     totalRolls,
     centers,
     setMoving,
@@ -154,8 +170,8 @@ export function useSoulMovement(
 
   return useAnimatedStyle(() => ({
     transform: [
-      { translateX: translateX.value - boxSize / 2 },
-      { translateY: translateY.value - boxSize / 2 },
+      { translateX: translateX.value - boxSize / 2 + offset.x },
+      { translateY: translateY.value - boxSize / 2 + offset.y },
     ],
   }));
 }

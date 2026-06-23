@@ -13,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colors, radius, spacing, typography } from '@/constants';
+import { colors, radius, SOUL_COLORS, spacing, typography } from '@/constants';
 import { useGameStore } from '@/store';
 import type { MoveHistoryEntry, MoveOutcome } from '@/types';
 
@@ -44,8 +44,14 @@ const OUTCOME_COLOR: Record<MoveOutcome, string> = {
   win: colors.moksha,
 };
 
-const HistoryRow: React.FC<{ entry: MoveHistoryEntry }> = ({ entry }) => (
+const HistoryRow: React.FC<{ entry: MoveHistoryEntry; dotColor?: string }> = ({
+  entry,
+  dotColor,
+}) => (
   <View style={styles.row}>
+    {dotColor ? (
+      <View style={[styles.dot, { backgroundColor: dotColor }]} />
+    ) : null}
     <Text style={styles.index}>{entry.id}</Text>
     <Text style={styles.move}>
       {entry.from} → {entry.to}
@@ -63,10 +69,17 @@ const HistoryModalComponent: React.FC<HistoryModalProps> = ({
 }) => {
   const moveHistory = useGameStore(state => state.moveHistory);
   const totalRolls = useGameStore(state => state.totalRolls);
+  const players = useGameStore(state => state.players);
   const hasWon = useGameStore(state => state.gameStatus === 'won');
 
+  const multiplayer = players.length > 1;
+  // Map each player id to its soul (aura) color for the row dot.
+  const colorById = new Map(
+    players.map(p => [p.id, (SOUL_COLORS[p.colorId] ?? SOUL_COLORS[0]).aura]),
+  );
+
   const summary = hasWon
-    ? `Reached Moksha in ${totalRolls} moves`
+    ? `All souls liberated in ${totalRolls} moves`
     : `${totalRolls} moves so far`;
 
   return (
@@ -88,7 +101,12 @@ const HistoryModalComponent: React.FC<HistoryModalProps> = ({
               style={styles.list}
               data={moveHistory}
               keyExtractor={item => String(item.id)}
-              renderItem={({ item }) => <HistoryRow entry={item} />}
+              renderItem={({ item }) => (
+                <HistoryRow
+                  entry={item}
+                  dotColor={multiplayer ? colorById.get(item.playerId) : undefined}
+                />
+              )}
               initialNumToRender={20}
             />
           )}
@@ -156,6 +174,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: spacing.xs,
   },
   index: {
     width: 28,

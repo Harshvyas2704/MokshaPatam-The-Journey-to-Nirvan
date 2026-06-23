@@ -53,4 +53,26 @@ export const SOUL_TOKEN = {
 export const SOUL_MOVEMENT = {
   stepDurationMs: 170,
   jumpDurationMs: 650,
+  /**
+   * When the turn passes to a different player, the camera first glides to that
+   * player's token (and the token holds still) for this long, BEFORE the move
+   * animation begins — so the board "scrolls there first, then starts moving".
+   */
+  prePanMs: 480,
 } as const;
+
+/**
+ * The four selectable soul (token) colors. Each is a calm luminous orb: a hot
+ * near-white CORE with a colored AURA. Index = `colorId` stored per player.
+ */
+export const SOUL_COLORS = [
+  { id: 0, name: 'Sky', core: '#E6F2FF', aura: '#4FA3FF' },
+  { id: 1, name: 'Saffron', core: '#FFF1DD', aura: '#E58A2B' },
+  { id: 2, name: 'Emerald', core: '#E8FBEC', aura: '#36B66E' },
+  { id: 3, name: 'Rose', core: '#FFEAF1', aura: '#E2588E' },
+] as const;
+
+/** Maximum number of players in a single game. */
+export const MAX_PLAYERS = SOUL_COLORS.length;
+
+export type SoulColor = (typeof SOUL_COLORS)[number];

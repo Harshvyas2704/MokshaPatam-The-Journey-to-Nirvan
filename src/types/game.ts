@@ -33,6 +33,8 @@ export interface MoveHop {
  */
 export interface MoveHistoryEntry {
   id: number;
+  /** Which player made this move. */
+  playerId: number;
   from: Position;
   to: Position;
   dice: number;
@@ -61,44 +63,69 @@ export interface MoveResult {
   hops: MoveHop[];
 }
 
-/**
- * The complete game state held by the Zustand store.
- */
-export interface GameState {
+/** A single player (a soul) and everything tracked per-soul. */
+export interface PlayerState {
+  /** Stable id (0-based) — also the player's slot. */
+  id: number;
+  /** Display name. */
+  name: string;
+  /** Index into `SOUL_COLORS` — the soul's token color. */
+  colorId: number;
   /** Last numbered square (0 = janmasthan). Meaningful when `realm` is null. */
   currentSquare: number;
   /** Off-board realm key, or null when on the board / at janmasthan. */
   realm: string | null;
+  /** Consecutive rolls spent on the grave (escape needs 4). */
+  mrutyuRollCount: number;
+  /**
+   * Distinct narak episodes: each ENTRY into a hell realm from the board.
+   * Moving realm→realm (e.g. महानरक → क्षुद्रनरक) without rebirth does NOT recount.
+   */
+  narakVisits: number;
+  /** Lives lived: incremented each time this soul returns to janmasthan. */
+  lives: number;
+  /** Whether this soul has reached Moksha (285). */
+  finished: boolean;
+  /** Placement once finished (1 = first to liberation), else null. */
+  rank: number | null;
+}
+
+/** Config supplied by the setup screen to start a game. */
+export interface PlayerConfig {
+  name: string;
+  colorId: number;
+}
+
+/**
+ * The complete game state held by the Zustand store.
+ */
+export interface GameState {
+  /** All players (souls) in this session, in turn order. */
+  players: PlayerState[];
+  /** Index (into `players`) of the player whose turn it is. */
+  currentPlayerIndex: number;
+  /** How many players have reached Moksha (drives rank assignment). */
+  finishedCount: number;
   /** Latest dice value, or null before the first roll. */
   diceValue: number | null;
   /** Whether a dice roll animation / resolution is in progress. */
   isRolling: boolean;
-  /** Whether the soul token is mid-animation. */
+  /** Whether a soul token is mid-animation. */
   isMoving: boolean;
-  /** Whether the soul is auto-rolling toward the goal. */
+  /** Whether the game is auto-rolling. */
   isAutoPlaying: boolean;
   /** The most recently resolved move (drives the movement animation). */
   lastMove: MoveResult | null;
-  /** Current lifecycle status. */
+  /** Which player the `lastMove` belongs to. */
+  lastMovePlayerId: number | null;
+  /** Whether `lastMove` began a different player's turn (drives the camera pre-pan). */
+  lastMoveTurnSwitched: boolean;
+  /** When the current move finishes, advance to the next player's turn. */
+  pendingAdvance: boolean;
+  /** Current lifecycle status ('won' = every soul liberated). */
   gameStatus: GameStatus;
   /** Total number of dice rolls this session. */
   totalRolls: number;
-  /** How many snakes the player has descended this session. */
-  snakesEncountered: number;
-  /** How many ladders the player has climbed this session. */
-  laddersClimbed: number;
-  /** How many times the soul has fallen into a naraka (per-resolution stat). */
-  narakCount: number;
-  /**
-   * Distinct narak episodes shown to the player: counts each ENTRY into a hell
-   * realm from the board. Moving realm→realm (e.g. महानरक → क्षुद्रनरक) without
-   * passing through janmasthan does NOT recount.
-   */
-  narakVisits: number;
-  /** Lives lived: incremented each time the soul returns to janmasthan. */
-  lives: number;
-  /** Consecutive rolls spent on the grave (escape needs 4). */
-  mrutyuRollCount: number;
-  /** Ordered history of resolved moves. */
+  /** Ordered history of resolved moves (across all players). */
   moveHistory: MoveHistoryEntry[];
 }

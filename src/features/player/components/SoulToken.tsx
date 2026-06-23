@@ -42,11 +42,12 @@ function centeredCircle(d: number, box: number): ViewStyle {
 }
 
 /** A single halo ring that expands outward and fades, on a loop. */
-const Halo: React.FC<{ box: number; diameter: number; delay: number }> = ({
-  box,
-  diameter,
-  delay,
-}) => {
+const Halo: React.FC<{
+  box: number;
+  diameter: number;
+  delay: number;
+  color: string;
+}> = ({ box, diameter, delay, color }) => {
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -87,7 +88,7 @@ const Halo: React.FC<{ box: number; diameter: number; delay: number }> = ({
         centeredCircle(diameter, box),
         {
           borderWidth: Math.max(1, diameter * 0.04),
-          borderColor: colors.soulAura,
+          borderColor: color,
         },
         style,
       ]}
@@ -98,9 +99,17 @@ const Halo: React.FC<{ box: number; diameter: number; delay: number }> = ({
 interface SoulTokenProps {
   /** Board cell size; the orb scales relative to it. */
   cellSize: number;
+  /** Bright inner core color (defaults to the first soul color). */
+  core?: string;
+  /** Surrounding aura / glow color (defaults to the first soul color). */
+  aura?: string;
 }
 
-const SoulTokenComponent: React.FC<SoulTokenProps> = ({ cellSize }) => {
+const SoulTokenComponent: React.FC<SoulTokenProps> = ({
+  cellSize,
+  core: coreColor = colors.soul,
+  aura: auraColor = colors.soulAura,
+}) => {
   const breath = useSharedValue(0);
   const float = useSharedValue(0);
   const reduceMotion = useReducedMotion();
@@ -152,10 +161,10 @@ const SoulTokenComponent: React.FC<SoulTokenProps> = ({ cellSize }) => {
       return {
         diameter: lerp(sizes.aura, sizes.core * 1.1, t),
         opacity: lerp(glowMinOpacity, glowMaxOpacity, t * t),
-        color: t > 0.7 ? colors.soul : colors.soulAura,
+        color: t > 0.7 ? coreColor : auraColor,
       };
     });
-  }, [sizes.aura, sizes.core]);
+  }, [sizes.aura, sizes.core, coreColor, auraColor]);
 
   const floatStyle = useAnimatedStyle(() => ({
     transform: [
@@ -199,6 +208,7 @@ const SoulTokenComponent: React.FC<SoulTokenProps> = ({ cellSize }) => {
                 box={sizes.box}
                 diameter={sizes.aura}
                 delay={(i * SOUL_TOKEN.ringDurationMs) / SOUL_TOKEN.ringCount}
+                color={auraColor}
               />
             ))}
 
@@ -215,7 +225,12 @@ const SoulTokenComponent: React.FC<SoulTokenProps> = ({ cellSize }) => {
         </Animated.View>
 
         <Animated.View
-          style={[centeredCircle(sizes.core, sizes.box), styles.core, coreStyle]}>
+          style={[
+            centeredCircle(sizes.core, sizes.box),
+            styles.core,
+            { backgroundColor: coreColor, borderColor: auraColor, shadowColor: coreColor },
+            coreStyle,
+          ]}>
           <View
             style={[
               styles.highlight,
@@ -243,11 +258,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   core: {
-    backgroundColor: colors.soul,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.soulAura,
+    // Color (background / border / shadow) is applied inline per soul color.
     // Soft bloom around the core (iOS shadow + Android elevation).
-    shadowColor: colors.soul,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.95,
     shadowRadius: 10,

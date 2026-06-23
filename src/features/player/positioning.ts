@@ -34,3 +34,20 @@ export function getSoulCenter(cell: PositionedCell): SoulCenter {
 export function getSoulBoxSize(cellSize: number): number {
   return cellSize * SOUL_TOKEN.auraRatio * SOUL_TOKEN.ringMaxScale;
 }
+
+/**
+ * A small per-player offset so multiple souls sharing a cell don't perfectly
+ * overlap. A single soul stays centered; more souls spread evenly on a ring.
+ */
+export function getClusterOffset(
+  index: number,
+  count: number,
+  cellSize: number,
+): { x: number; y: number } {
+  if (count <= 1) {
+    return { x: 0, y: 0 };
+  }
+  const radius = cellSize * 0.16;
+  const angle = (index / count) * Math.PI * 2 - Math.PI / 2;
+  return { x: radius * Math.cos(angle), y: radius * Math.sin(angle) };
+}

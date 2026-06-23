@@ -48,6 +48,7 @@ export function useFollowSoul({
 }: FollowSoulParams): void {
   const lastMove = useGameStore(state => state.lastMove);
   const totalRolls = useGameStore(state => state.totalRolls);
+  const turnSwitched = useGameStore(state => state.lastMoveTurnSwitched);
   const followedRollId = useRef<number | null>(null);
   const reduceMotion = useReducedMotion();
 
@@ -119,16 +120,29 @@ export function useFollowSoul({
       return;
     }
 
-    translateX.value = withSequence(
-      ...offsets.map((o, i) => withTiming(o.x, timing(i))),
-    );
-    translateY.value = withSequence(
-      ...offsets.map((o, i) => withTiming(o.y, timing(i))),
-    );
+    const xSteps = offsets.map((o, i) => withTiming(o.x, timing(i)));
+    const ySteps = offsets.map((o, i) => withTiming(o.y, timing(i)));
+
+    // On a turn switch, first glide the camera to the new player's token
+    // (its starting cell) before following the move — "scroll there first".
+    if (turnSwitched) {
+      const from = centers.get(positionKey(lastMove.from));
+      if (from) {
+        const o = offsetFor(from);
+        const hold = { duration: SOUL_MOVEMENT.prePanMs, easing: Easing.linear };
+        translateX.value = withSequence(withTiming(o.x, hold), ...xSteps);
+        translateY.value = withSequence(withTiming(o.y, hold), ...ySteps);
+        return;
+      }
+    }
+
+    translateX.value = withSequence(...xSteps);
+    translateY.value = withSequence(...ySteps);
   }, [
     layout,
     lastMove,
     totalRolls,
+    turnSwitched,
     centers,
     scale,
     translateX,
