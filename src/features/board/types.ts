@@ -28,7 +28,11 @@ export interface BoardDimensions extends BoardBounds {
   upperCell: number;
   /** Height (px) reserved above the lower grid for the scattered upper section. */
   upperHeight: number;
-  /** Total board width in px (columns * cellSize). */
+  /** Width (px) of the main grid (columns * cellSize), excluding side gutters. */
+  gridWidth: number;
+  /** Left gutter width (px) holding the side loka cells; 0 when none. */
+  marginLeft: number;
+  /** Total board width in px (gridWidth + left & right gutters). */
   boardWidth: number;
   /** Total board height in px (upperHeight + lower grid + off-board bands). */
   boardHeight: number;
@@ -50,10 +54,12 @@ export interface PositionedOffboardCell {
   key: string;
   sanskrit: string;
   english: string;
-  kind: 'start' | 'narak';
+  kind: 'start' | 'narak' | 'loka';
   x: number;
   y: number;
   size: number;
+  /** For loka cells: whether this is the deceptive Void (शून्य लोक). */
+  void?: boolean;
 }
 
 /** Absolute box of the central sacred medallion (हरिहर क्षेत्र). */

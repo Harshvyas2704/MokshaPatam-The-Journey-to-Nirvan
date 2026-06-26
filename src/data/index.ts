@@ -56,10 +56,12 @@ export {
   HARIHAR_KSHETRA,
   OFFBOARD_CELLS,
   OFFBOARD_BANDS,
+  SIDE_LOKAS,
   isMahanarak,
   isNarak,
   positionKey,
   type OffboardCellDef,
+  type SideLokaDef,
 } from './realms';
 export {
   ladderListings,

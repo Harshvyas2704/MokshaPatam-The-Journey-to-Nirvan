@@ -8,13 +8,19 @@
  */
 import { laddersRaw } from './ladders';
 import { snakesRaw } from './snakes';
+import { cellNamesEnglish } from './cellNamesEnglish';
 import { REALM_LABEL } from './realms';
 
-/** One "from → to" listing row. `to` is a square number or a realm label. */
+/**
+ * One "from → to" listing row. `to` is a square number or a realm label;
+ * `fromTitle`/`toTitle` are the human-readable square (or realm) names.
+ */
 export interface PathListing {
   id: string;
   from: number;
   to: string;
+  fromTitle: string;
+  toTitle: string;
 }
 
 /** Format a raw destination (number or realm string) to a display string. */
@@ -23,6 +29,14 @@ function formatTo(to: number | string): string {
     return String(to);
   }
   return REALM_LABEL[to] ?? to;
+}
+
+/** Human-readable name for a square number or realm string. */
+function titleFor(value: number | string): string {
+  if (typeof value === 'number') {
+    return cellNamesEnglish[value] ?? `Square ${value}`;
+  }
+  return REALM_LABEL[value] ?? value;
 }
 
 /** Build sorted listings from a raw map, skipping non-numeric (realm) origins. */
@@ -38,6 +52,8 @@ function buildListings(
       id: `${prefix}-${from}`,
       from,
       to: formatTo(to),
+      fromTitle: titleFor(from),
+      toTitle: titleFor(to),
     }));
 }
 

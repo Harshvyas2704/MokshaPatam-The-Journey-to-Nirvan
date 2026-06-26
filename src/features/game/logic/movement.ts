@@ -185,13 +185,17 @@ function wrap(
 
 /**
  * The ordered list of positions the token visits for a move (after `from`):
- * the numeric walk, then the final jump if the resting place differs.
+ * the numeric walk, then EACH hop (ladder/snake/realm) in turn — so the soul
+ * visibly passes through intermediate stops like a loka before chaining onward
+ * to a hell/grave, rather than teleporting straight to the final resting place.
  */
 export function getMovePath(move: MoveResult): Position[] {
   const path: Position[] = [...move.steps];
-  const last: Position = path.length > 0 ? path[path.length - 1] : move.from;
-  if (move.to !== last) {
-    path.push(move.to);
+  for (const hop of move.hops) {
+    const last: Position = path.length > 0 ? path[path.length - 1] : move.from;
+    if (hop.to !== last) {
+      path.push(hop.to);
+    }
   }
   return path;
 }

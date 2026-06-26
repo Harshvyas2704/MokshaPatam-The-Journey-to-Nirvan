@@ -60,6 +60,12 @@ export const BOARD_LAYOUT = {
   baseCellSize: 64,
   /** Gap (px) inset on each side of a cell tile within its grid slot. */
   cellInset: 2,
+  /**
+   * Width (in cell units) of the left/right gutters that hold the off-board
+   * "loka" realm cells (शून्य लोक, बेहस्त लोक, आत्मपरिभाण लोक). Reserved on each
+   * side of the grid so those cells sit just outside the main board.
+   */
+  sideMarginCells: 1,
 } as const;
 
 /**

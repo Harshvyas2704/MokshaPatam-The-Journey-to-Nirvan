@@ -10,6 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ROUTES } from '@/navigation/routes';
 import type { PlayerConfig, RootStackScreenProps } from '@/types';
 import { useGameStore } from '@/store';
+import { Collapsible } from '@/components';
 import { PlayerSetupModal } from '@/features/game';
 import {
   INSTRUCTION_SECTIONS,
@@ -53,25 +54,48 @@ const Section: React.FC<{ section: InstructionSection }> = ({ section }) => (
   </View>
 );
 
-/** A card listing every snake or ladder as compact "from → to" chips. */
+/** A single listing row: a number badge plus the square names it connects. */
+const PathRow: React.FC<{ listing: PathListing; arrow: string; accent: string }> = ({
+  listing,
+  arrow,
+  accent,
+}) => (
+  <View style={styles.pathRow}>
+    <View style={[styles.pathBadge, { borderColor: accent }]}>
+      <Text style={[styles.pathBadgeText, { color: accent }]}>
+        {`${listing.from} ${arrow} ${listing.to}`}
+      </Text>
+    </View>
+    <View style={styles.pathTitles}>
+      <Text style={styles.pathFromTitle} numberOfLines={2}>
+        {listing.fromTitle}
+      </Text>
+      <Text style={styles.pathToTitle} numberOfLines={2}>
+        {`${arrow} ${listing.toTitle}`}
+      </Text>
+    </View>
+  </View>
+);
+
+/** A collapsible banner that reveals every snake or ladder, with titles. */
 const PathSection: React.FC<{
-  heading: string;
+  title: string;
   listings: PathListing[];
   variant: 'ladder' | 'snake';
-}> = ({ heading, listings, variant }) => {
-  const chipStyle = variant === 'ladder' ? styles.chipLadder : styles.chipSnake;
+}> = ({ title, listings, variant }) => {
+  const accent = variant === 'ladder' ? colors.ladder : colors.snake;
   const arrow = variant === 'ladder' ? '↑' : '↓';
   return (
-    <View style={styles.card}>
-      <Text style={styles.cardHeading}>{`${heading}  (${listings.length})`}</Text>
-      <View style={styles.chipWrap}>
-        {listings.map(({ id, from, to }) => (
-          <View key={id} style={[styles.chip, chipStyle]}>
-            <Text style={styles.chipText}>{`${from} ${arrow} ${to}`}</Text>
-          </View>
-        ))}
-      </View>
-    </View>
+    <Collapsible title={title} badge={String(listings.length)} accent={accent}>
+      {listings.map(listing => (
+        <PathRow
+          key={listing.id}
+          listing={listing}
+          arrow={arrow}
+          accent={accent}
+        />
+      ))}
+    </Collapsible>
   );
 };
 
@@ -117,16 +141,17 @@ const InstructionsScreen: React.FC<RootStackScreenProps<'Instructions'>> = ({
         )}
 
         <PathSection
-          heading="🪜 Ladders"
+          title="🪜 Ladders"
           listings={ladderListings}
           variant="ladder"
         />
-        <PathSection
-          heading="🐍 Snakes"
-          listings={snakeListings}
-          variant="snake"
-        />
+        <PathSection title="🐍 Snakes" listings={snakeListings} variant="snake" />
 
+        <Text style={styles.credit}>{INSTRUCTIONS_CREDIT}</Text>
+      </ScrollView>
+
+      {/* Fixed footer — the CTA never scrolls away. */}
+      <View style={styles.footer}>
         <TouchableOpacity
           style={styles.cta}
           onPress={onOpenSetup}
@@ -134,9 +159,7 @@ const InstructionsScreen: React.FC<RootStackScreenProps<'Instructions'>> = ({
           accessibilityLabel="Start the game">
           <Text style={styles.ctaLabel}>{INSTRUCTIONS_CTA}</Text>
         </TouchableOpacity>
-
-        <Text style={styles.credit}>{INSTRUCTIONS_CREDIT}</Text>
-      </ScrollView>
+      </View>
 
       <PlayerSetupModal
         visible={setupOpen}
@@ -226,32 +249,52 @@ const styles = StyleSheet.create({
     lineHeight: typography.fontSize.md * typography.lineHeight.relaxed,
     fontFamily: typography.fontFamily.primary,
   },
-  chipWrap: {
+  pathRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
-  chip: {
+  pathBadge: {
+    minWidth: 78,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.sm,
     borderWidth: 1,
     backgroundColor: colors.surfaceMuted,
+    marginRight: spacing.md,
   },
-  chipLadder: {
-    borderColor: colors.ladder,
+  pathBadgeText: {
+    fontSize: typography.fontSize.sm,
+    fontWeight: typography.fontWeight.semibold,
+    fontFamily: typography.fontFamily.primary,
+    textAlign: 'center',
   },
-  chipSnake: {
-    borderColor: colors.snake,
+  pathTitles: {
+    flex: 1,
   },
-  chipText: {
+  pathFromTitle: {
     color: colors.textPrimary,
     fontSize: typography.fontSize.sm,
     fontFamily: typography.fontFamily.primary,
   },
+  pathToTitle: {
+    color: colors.textMuted,
+    fontSize: typography.fontSize.xs,
+    fontFamily: typography.fontFamily.primary,
+    marginTop: 1,
+  },
+  footer: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.background,
+  },
   cta: {
     alignSelf: 'center',
-    marginTop: spacing.md,
     backgroundColor: colors.maroon,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,

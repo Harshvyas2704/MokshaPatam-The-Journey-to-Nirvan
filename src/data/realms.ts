@@ -98,6 +98,34 @@ export const OFFBOARD_CELLS: OffboardCellDef[] = [
 /** How many off-board bands hang below the board. */
 export const OFFBOARD_BANDS = 2;
 
+/**
+ * Side "loka" realm cells, rendered in the left/right gutters beside the grid.
+ * A ladder climbs from `sourceCell` into the loka, which then chains onward to a
+ * hell/grave (see the realm chains in snakes.ts). `void: true` marks शून्य लोक,
+ * the deceptive Void that reads differently from the celestial lokas.
+ */
+export interface SideLokaDef {
+  key: string;
+  sanskrit: string;
+  english: string;
+  side: 'left' | 'right';
+  /** Numeric square whose ladder leads here. */
+  sourceCell: number;
+  /**
+   * Numeric square whose ROW the cell is aligned to (vertical placement only).
+   * Sits a few rows above `sourceCell` so the connector rises like a ladder.
+   * Falls back to `sourceCell` when omitted.
+   */
+  anchorCell?: number;
+  void?: boolean;
+}
+
+export const SIDE_LOKAS: SideLokaDef[] = [
+  { key: REALM.atmaparibhan, sanskrit: 'आत्मपरिभाण लोक', english: 'Self-realization', side: 'left', sourceCell: 55, anchorCell: 85 },
+  { key: REALM.shunya, sanskrit: 'शून्य लोक', english: 'Void World', side: 'left', sourceCell: 33, anchorCell: 84, void: true },
+  { key: REALM.behesht, sanskrit: 'बेहस्त लोक', english: 'Paradise', side: 'right', sourceCell: 38, anchorCell: 84 },
+];
+
 /** Resolve a position to its layout key: 0 -> JANMASTHAN, string realm as-is. */
 export function positionKey(position: number | string): string | number {
   if (position === JANMASTHAN) {

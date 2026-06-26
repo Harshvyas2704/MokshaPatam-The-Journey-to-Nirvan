@@ -1,7 +1,7 @@
 /**
  * Unit tests for the (pure) move resolution against the real dataset.
  */
-import { resolveMove } from '@/features/game/logic';
+import { getMovePath, resolveMove } from '@/features/game/logic';
 import { REALM } from '@/data';
 
 describe('resolveMove', () => {
@@ -38,6 +38,15 @@ describe('resolveMove', () => {
     expect(move.outcome).toBe('ladder');
     expect(move.to).toBe(29);
     expect(ladder).toBe(1);
+  });
+
+  it('routes a loka ladder through the loka, then onward to a hell (33)', () => {
+    // 32 + 1 -> 33 -> शून्य लोक (ladder) -> महानरक-लेफ्ट (chain).
+    const { move } = resolveMove(32, 1, 0);
+    expect(move.to).toBe(REALM.mahanarakLeft);
+    // The animation path visibly passes through the loka before the hell.
+    const path = getMovePath(move);
+    expect(path).toEqual([33, REALM.shunya, REALM.mahanarakLeft]);
   });
 
   it('falls off-board into a naraka (103 -> महानरक-लेफ्ट)', () => {

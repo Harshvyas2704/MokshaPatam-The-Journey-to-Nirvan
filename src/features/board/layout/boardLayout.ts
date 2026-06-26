@@ -17,7 +17,7 @@
  */
 import type { BoardCell } from '@/types';
 import { BOARD_LAYOUT } from '@/constants';
-import { OFFBOARD_BANDS, OFFBOARD_CELLS } from '@/data';
+import { COLUMN_COUNT, OFFBOARD_BANDS, OFFBOARD_CELLS, SIDE_LOKAS } from '@/data';
 import type {
   BoardBounds,
   BoardDimensions,
@@ -58,6 +58,14 @@ function hasUpperSection(cells: BoardCell[]): boolean {
   return cells.some(cell => cell.id >= OVAL_FIRST);
 }
 
+/** Squares whose ladders lead into a side loka (drives the gutter reservation). */
+const SIDE_SOURCE_IDS = new Set(SIDE_LOKAS.map(l => l.sourceCell));
+
+/** Whether the board has the side loka cells (their source squares are present). */
+function hasSideCells(cells: BoardCell[]): boolean {
+  return cells.some(cell => SIDE_SOURCE_IDS.has(cell.id));
+}
+
 /** Derive the lower-grid extent (columns/rows) from the cells' row/col values. */
 export function computeBoardBounds(cells: BoardCell[]): BoardBounds {
   let maxCol = 0;
@@ -91,9 +99,13 @@ export function computeBoardBounds(cells: BoardCell[]): BoardBounds {
 export function computeBoardDimensions(
   bounds: BoardBounds,
   hasUpper = false,
+  hasSides = false,
 ): BoardDimensions {
   const cellSize = BOARD_LAYOUT.baseCellSize;
-  const boardWidth = cellSize * bounds.columns;
+  const gridWidth = cellSize * bounds.columns;
+  // Reserve symmetric left/right gutters for the side loka cells.
+  const marginLeft = hasSides ? BOARD_LAYOUT.sideMarginCells * cellSize : 0;
+  const boardWidth = gridWidth + marginLeft * 2;
   // Uniform sizing: upper-section cells are the same size as lower-grid cells.
   const upperCell = hasUpper ? cellSize : 0;
   const upperHeight = hasUpper
@@ -106,6 +118,8 @@ export function computeBoardDimensions(
     cellSize,
     upperCell,
     upperHeight,
+    gridWidth,
+    marginLeft,
     boardWidth,
     // upper section + lower grid + the off-board realm bands below square 1.
     boardHeight: upperHeight + (bounds.rows + OFFBOARD_BANDS) * cellSize,
@@ -126,12 +140,12 @@ export function layoutCells(
   cells: BoardCell[],
   dimensions: BoardDimensions,
 ): PositionedCell[] {
-  const { cellSize, rows, upperHeight } = dimensions;
+  const { cellSize, rows, upperHeight, marginLeft } = dimensions;
   return cells
     .filter(cell => cell.id <= LOWER_LAST)
     .map(cell => ({
       ...cell,
-      x: cell.col * cellSize,
+      x: marginLeft + cell.col * cellSize,
       // Below the upper section; flip Y so row 0 sits at the bottom of the grid.
       y: upperHeight + (rows - 1 - cell.row) * cellSize,
       size: cellSize,
@@ -150,7 +164,7 @@ export function layoutUpper(
   if (upper.length === 0) {
     return [];
   }
-  const { boardWidth, upperCell } = dimensions;
+  const { boardWidth, gridWidth, upperCell } = dimensions;
   const byId = new Map(upper.map(cell => [cell.id, cell]));
   const result: PositionedCell[] = [];
 
@@ -170,9 +184,9 @@ export function layoutUpper(
   // Oval ring (234..248) below the pyramid.
   const pyramidHeight = PYRAMID_ROWS.length * upperCell;
   const ovalBandHeight = OVAL_BAND_ROWS * upperCell;
-  const cx = boardWidth / 2;
+  const cx = boardWidth / 2; // grid center (margins are symmetric)
   const cy = pyramidHeight + ovalBandHeight / 2;
-  const radiusX = boardWidth * OVAL_RADIUS_X_RATIO;
+  const radiusX = gridWidth * OVAL_RADIUS_X_RATIO;
   const radiusY = ovalBandHeight * OVAL_RADIUS_Y_RATIO;
   const ovalCount = OVAL_LAST - OVAL_FIRST + 1;
   for (let k = 0; k < ovalCount; k++) {
@@ -220,28 +234,65 @@ export function computeMedallion(
 export function layoutOffboard(
   dimensions: BoardDimensions,
 ): PositionedOffboardCell[] {
-  const { cellSize, rows, upperHeight } = dimensions;
+  const { cellSize, rows, upperHeight, marginLeft } = dimensions;
   return OFFBOARD_CELLS.map(def => ({
     key: def.key,
     sanskrit: def.sanskrit,
     english: def.english,
     kind: def.kind,
-    x: def.col * cellSize,
+    x: marginLeft + def.col * cellSize,
     // Below the lower grid: band 0 sits just under square 1's row.
     y: upperHeight + (rows + def.band) * cellSize,
     size: cellSize,
   }));
 }
 
+/**
+ * Place the side "loka" cells in the left/right gutters. Each is aligned to its
+ * `anchorCell` row (a few rows above its source square) so the ladder connector
+ * rises diagonally and reads as a ladder, rather than sitting flat beside it.
+ */
+export function layoutSideCells(
+  dimensions: BoardDimensions,
+): PositionedOffboardCell[] {
+  const { cellSize, rows, upperHeight, marginLeft, gridWidth } = dimensions;
+  if (marginLeft <= 0) {
+    return [];
+  }
+  return SIDE_LOKAS.map(def => {
+    const anchor = def.anchorCell ?? def.sourceCell;
+    const sourceRow = Math.floor((anchor - 1) / COLUMN_COUNT);
+    const x =
+      def.side === 'left' ? marginLeft - cellSize : marginLeft + gridWidth;
+    return {
+      key: def.key,
+      sanskrit: def.sanskrit,
+      english: def.english,
+      kind: 'loka' as const,
+      x,
+      y: upperHeight + (rows - 1 - sourceRow) * cellSize,
+      size: cellSize,
+      void: def.void,
+    };
+  });
+}
+
 /** Full layout pass: bounds -> dimensions -> lower + upper + off-board cells. */
 export function computeBoardLayout(cells: BoardCell[]): BoardLayout {
   const bounds = computeBoardBounds(cells);
-  const dimensions = computeBoardDimensions(bounds, hasUpperSection(cells));
+  const dimensions = computeBoardDimensions(
+    bounds,
+    hasUpperSection(cells),
+    hasSideCells(cells),
+  );
   const positionedCells = [
     ...layoutCells(cells, dimensions),
     ...layoutUpper(cells, dimensions),
   ];
-  const offboardCells = layoutOffboard(dimensions);
+  const offboardCells = [
+    ...layoutOffboard(dimensions),
+    ...layoutSideCells(dimensions),
+  ];
   const medallion = computeMedallion(dimensions);
   return { dimensions, positionedCells, offboardCells, medallion };
 }

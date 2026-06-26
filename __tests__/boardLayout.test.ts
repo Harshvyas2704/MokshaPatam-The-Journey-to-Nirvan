@@ -90,4 +90,20 @@ describe('hybrid upper section', () => {
     expect(medallion.y).toBeGreaterThan(0);
     expect(medallion.y).toBeLessThan(layout.dimensions.upperHeight);
   });
+
+  it('places the side loka cells in the left/right gutters', () => {
+    const layout = computeBoardLayout(boardCells);
+    const { marginLeft, gridWidth, cellSize, boardWidth } = layout.dimensions;
+    expect(marginLeft).toBeGreaterThan(0);
+
+    const loka = (key: string) =>
+      layout.offboardCells.find(c => c.key === key)!;
+
+    // शून्य लोक (from 33) sits in the LEFT gutter; बेहस्त लोक (from 38) on the RIGHT.
+    expect(loka('शून्य लोक').x).toBe(marginLeft - cellSize);
+    expect(loka('बेहस्त लोक').x).toBe(marginLeft + gridWidth);
+    expect(loka('बेहस्त लोक').x + cellSize).toBeLessThanOrEqual(boardWidth);
+    // They are tagged as loka cells.
+    expect(loka('शून्य लोक').kind).toBe('loka');
+  });
 });

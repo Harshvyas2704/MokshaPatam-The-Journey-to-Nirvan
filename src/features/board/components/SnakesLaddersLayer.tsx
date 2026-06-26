@@ -13,7 +13,7 @@ import React, { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { BOARD_OVERLAY } from '@/constants';
-import { ladders, offboardSnakes, snakes } from '@/data';
+import { ladders, offboardLadders, offboardSnakes, snakes } from '@/data';
 import { lerp, mixHex } from '@/utils';
 import { buildLadder, buildSnakeBody, type Point } from '../svg';
 import { getCellCenter } from '../layout';
@@ -67,10 +67,11 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
       }
     }
     for (const s of offboardSnakes) {
-      if (typeof s.from !== 'number') {
-        continue; // realm->realm chains aren't drawn on the board
-      }
-      const head = centers.get(s.from);
+      // Numeric head -> realm cell, AND realm -> realm (loka -> hell/grave).
+      const head =
+        typeof s.from === 'number'
+          ? centers.get(s.from)
+          : realmCenters.get(s.from);
       const tail = realmCenters.get(s.to);
       if (head && tail) {
         entries.push({ id: s.id, head, tail, mag: null }); // off-board = deepest fall
@@ -123,24 +124,38 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
   }, [centers, realmCenters, cellSize, headHalf, tailHalf]);
 
   const ladderShapes = useMemo(() => {
-    const built = ladders
-      .map(ladder => {
-        const base = centers.get(ladder.from);
-        const top = centers.get(ladder.to);
-        if (!base || !top) {
-          return null;
-        }
-        return { id: ladder.id, mag: ladder.to - ladder.from, base, top };
-      })
-      .filter((l): l is NonNullable<typeof l> => l !== null);
+    const built: {
+      id: string;
+      mag: number | null;
+      base: Point;
+      top: Point;
+    }[] = [];
+    for (const ladder of ladders) {
+      const base = centers.get(ladder.from);
+      const top = centers.get(ladder.to);
+      if (base && top) {
+        built.push({ id: ladder.id, mag: ladder.to - ladder.from, base, top });
+      }
+    }
+    // Off-board ladders climb from a numeric square into a side loka cell.
+    for (const l of offboardLadders) {
+      const base = centers.get(l.from);
+      const top = realmCenters.get(l.to);
+      if (base && top) {
+        built.push({ id: l.id, mag: null, base, top });
+      }
+    }
 
-    // Shade each ladder RED by climb distance (short = light, long = dark).
-    const mags = built.map(l => l.mag);
-    const minMag = mags.length ? Math.min(...mags) : 0;
-    const maxMag = mags.length ? Math.max(...mags) : 1;
+    // Shade each ladder RED by climb distance (short = light, long = dark;
+    // off-board "loka" ladders take the darkest shade).
+    const numericMags = built
+      .map(l => l.mag)
+      .filter((m): m is number => m !== null);
+    const minMag = numericMags.length ? Math.min(...numericMags) : 0;
+    const maxMag = numericMags.length ? Math.max(...numericMags) : 1;
 
     return built.map(({ id, mag, base, top }) => {
-      const t = (mag - minMag) / (maxMag - minMag || 1);
+      const t = mag === null ? 1 : (mag - minMag) / (maxMag - minMag || 1);
       const shade = lerp(BOARD_OVERLAY.pathShadeFloor, 1, t);
       return {
         id,
@@ -158,7 +173,7 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
         ),
       };
     });
-  }, [centers, railOffset, rungSpacing]);
+  }, [centers, realmCenters, railOffset, rungSpacing]);
 
   return (
     <Svg
