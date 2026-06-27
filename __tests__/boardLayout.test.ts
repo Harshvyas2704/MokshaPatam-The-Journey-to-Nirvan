@@ -33,8 +33,8 @@ describe('computeBoardDimensions', () => {
     const dims = computeBoardDimensions(bounds);
     expect(dims.cellSize).toBe(64); // BOARD_LAYOUT.baseCellSize
     expect(dims.boardWidth).toBe(128);
-    // Height includes the 2 off-board realm bands: (3 + 2) * 64.
-    expect(dims.boardHeight).toBe(320);
+    // Height includes the off-board narak/grave band: (3 + 1) * 64.
+    expect(dims.boardHeight).toBe(256);
   });
 });
 

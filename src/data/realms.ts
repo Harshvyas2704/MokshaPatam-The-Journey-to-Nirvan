@@ -63,7 +63,8 @@ export function isNarak(realm: string): boolean {
 
 /**
  * Rendered off-board cell. `key` is the realm string, or 'JANMASTHAN' for start.
- * `band` 0 sits just below square 1; band 1 sits below that. `col` is 0..7.
+ * `band` -1 sits alongside the bottom square row (squares 5..1); band 0 is the
+ * row directly below that. `col` is a column in the 12-wide grid.
  */
 export interface OffboardCellDef {
   key: string;
@@ -82,21 +83,33 @@ export const JANMASTHAN_KEY = 'JANMASTHAN';
  * (behesht / shunya / atmaparibhan) are NOT rendered — the soul never rests
  * there (they chain straight on to a hell/grave), so they need no cell.
  *
- * Band 0 (just below square 1) is the row the player asked for:
- *   महानरक · क्षुद्रनरक · महानरक · जन्मस्थान · महानरक
+ * Band -1 sits in the bottom SQUARE row, completing the player's start row to
+ * the right of square 1:
+ *   [5][4][3][2][1] · जन्मस्थान · मरण
+ * Band 0 (the row directly below) holds all the नरक hells and the grave:
+ *   - महानरक below square 5 (col 0)
+ *   - क्षुद्रनरक below जन्मस्थान (col 5)
+ *   - महानरक below मरण (col 6)
+ *   - कबर and महानरक on the right side of the board (cols 10..11)
  */
 export const OFFBOARD_CELLS: OffboardCellDef[] = [
+  // Start row (band -1), alongside squares 5..1 (cols 0..4).
+  { key: JANMASTHAN_KEY, sanskrit: 'जन्मस्थान', english: 'Janmasthan (Start)', kind: 'start', band: -1, col: 5 },
+  { key: REALM.maran, sanskrit: 'मरण', english: 'Maraṇa (Death)', kind: 'narak', band: -1, col: 6 },
+  // Narak / grave band (band 0).
   { key: REALM.mahanarakLeft, sanskrit: 'महानरक', english: 'Mahānarak (Great Hell)', kind: 'narak', band: 0, col: 0 },
-  { key: REALM.kshudranarak, sanskrit: 'क्षुद्रनरक', english: 'Kshudra-narak (Lesser Hell)', kind: 'narak', band: 0, col: 2 },
-  { key: REALM.mahanarak, sanskrit: 'महानरक', english: 'Mahānarak (Great Hell)', kind: 'narak', band: 0, col: 4 },
-  { key: JANMASTHAN_KEY, sanskrit: 'जन्मस्थान', english: 'Janmasthan (Start)', kind: 'start', band: 0, col: 5 },
-  { key: REALM.mahanarakRight, sanskrit: 'महानरक', english: 'Mahānarak (Great Hell)', kind: 'narak', band: 0, col: 7 },
-  { key: REALM.maran, sanskrit: 'मरण', english: 'Maraṇa (Death)', kind: 'narak', band: 1, col: 2 },
-  { key: REALM.grave, sanskrit: 'मृत्यू उर्फ कबर', english: 'Death / the Grave', kind: 'narak', band: 1, col: 5 },
+  { key: REALM.kshudranarak, sanskrit: 'क्षुद्रनरक', english: 'Kshudra-narak (Lesser Hell)', kind: 'narak', band: 0, col: 5 },
+  { key: REALM.mahanarak, sanskrit: 'महानरक', english: 'Mahānarak (Great Hell)', kind: 'narak', band: 0, col: 6 },
+  { key: REALM.grave, sanskrit: 'मृत्यू उर्फ कबर', english: 'Death / the Grave', kind: 'narak', band: 0, col: 10 },
+  { key: REALM.mahanarakRight, sanskrit: 'महानरक', english: 'Mahānarak (Great Hell)', kind: 'narak', band: 0, col: 11 },
 ];
 
-/** How many off-board bands hang below the board. */
-export const OFFBOARD_BANDS = 2;
+/**
+ * How many off-board bands hang BELOW the grid (extra board height). Only the
+ * narak/grave band (band 0) extends below the squares; the जन्मस्थान / मरण cells
+ * (band -1) sit within the bottom square row and need no extra height.
+ */
+export const OFFBOARD_BANDS = 1;
 
 /**
  * Side "loka" realm cells, rendered in the left/right gutters beside the grid.

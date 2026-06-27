@@ -4,8 +4,9 @@
  * Converts the dataset's device-independent grid into responsive pixel
  * coordinates. The board is a HYBRID:
  *
- *   - Lower section (cells 1..233): a dense 14-wide serpentine grid. Row 0
- *     (cell 1, the soul's birth) sits at the BOTTOM; the journey climbs upward.
+ *   - Lower section (cells 1..233): a dense 12-wide serpentine grid that starts
+ *     from the centre — the bottom row holds only squares 5..1, with the
+ *     off-board जन्मस्थान / मरण cells beside them. The journey climbs upward.
  *   - Upper section (cells 234..285): a SPARSE, non-grid arrangement matching
  *     the traditional board — an oval ring of "loka" cells (234..248) and a
  *     centred pyramid of the highest realms (249..285) at the very top.
@@ -17,7 +18,7 @@
  */
 import type { BoardCell } from '@/types';
 import { BOARD_LAYOUT } from '@/constants';
-import { COLUMN_COUNT, OFFBOARD_BANDS, OFFBOARD_CELLS, SIDE_LOKAS } from '@/data';
+import { OFFBOARD_BANDS, OFFBOARD_CELLS, SIDE_LOKAS } from '@/data';
 import type {
   BoardBounds,
   BoardDimensions,
@@ -248,20 +249,23 @@ export function layoutOffboard(
 }
 
 /**
- * Place the side "loka" cells in the left/right gutters. Each is aligned to its
- * `anchorCell` row (a few rows above its source square) so the ladder connector
- * rises diagonally and reads as a ladder, rather than sitting flat beside it.
+ * Place the side "loka" cells in the left/right gutters. Each is vertically
+ * aligned to its `anchorCell` (a few rows above its source square) so the ladder
+ * connector rises diagonally and reads as a ladder, rather than sitting flat
+ * beside it. The anchor's row is taken from the already-positioned grid cell, so
+ * this stays correct even though the bottom row is partial (squares 5..1).
  */
 export function layoutSideCells(
   dimensions: BoardDimensions,
+  lowerCells: PositionedCell[],
 ): PositionedOffboardCell[] {
-  const { cellSize, rows, upperHeight, marginLeft, gridWidth } = dimensions;
+  const { cellSize, upperHeight, marginLeft, gridWidth } = dimensions;
   if (marginLeft <= 0) {
     return [];
   }
+  const yOf = new Map(lowerCells.map(c => [c.id, c.y]));
   return SIDE_LOKAS.map(def => {
     const anchor = def.anchorCell ?? def.sourceCell;
-    const sourceRow = Math.floor((anchor - 1) / COLUMN_COUNT);
     const x =
       def.side === 'left' ? marginLeft - cellSize : marginLeft + gridWidth;
     return {
@@ -270,7 +274,7 @@ export function layoutSideCells(
       english: def.english,
       kind: 'loka' as const,
       x,
-      y: upperHeight + (rows - 1 - sourceRow) * cellSize,
+      y: yOf.get(anchor) ?? upperHeight,
       size: cellSize,
       void: def.void,
     };
@@ -285,13 +289,11 @@ export function computeBoardLayout(cells: BoardCell[]): BoardLayout {
     hasUpperSection(cells),
     hasSideCells(cells),
   );
-  const positionedCells = [
-    ...layoutCells(cells, dimensions),
-    ...layoutUpper(cells, dimensions),
-  ];
+  const lowerCells = layoutCells(cells, dimensions);
+  const positionedCells = [...lowerCells, ...layoutUpper(cells, dimensions)];
   const offboardCells = [
     ...layoutOffboard(dimensions),
-    ...layoutSideCells(dimensions),
+    ...layoutSideCells(dimensions, lowerCells),
   ];
   const medallion = computeMedallion(dimensions);
   return { dimensions, positionedCells, offboardCells, medallion };
