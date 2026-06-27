@@ -5,19 +5,11 @@ import { getMovePath, resolveMove } from '@/features/game/logic';
 import { REALM } from '@/data';
 
 describe('resolveMove', () => {
-  it('enters the board from janmasthan at square 1 only on a 6', () => {
-    const { move } = resolveMove(0, 6, 0);
+  it('enters the board from janmasthan at square 1', () => {
+    const { move } = resolveMove(0, 4, 0);
     expect(move.to).toBe(1);
     expect(move.outcome).toBe('enter');
     expect(move.steps).toEqual([1]);
-  });
-
-  it('blocks janmasthan entry on a non-6 (the turn is skipped)', () => {
-    const { move } = resolveMove(0, 4, 0);
-    expect(move.from).toBe(0);
-    expect(move.to).toBe(0);
-    expect(move.outcome).toBe('blocked');
-    expect(move.steps).toEqual([]);
   });
 
   it('does not bounce: an overshoot past 285 stays put', () => {

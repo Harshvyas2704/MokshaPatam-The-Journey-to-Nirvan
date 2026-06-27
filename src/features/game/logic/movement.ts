@@ -144,14 +144,8 @@ export function resolveMove(
     );
   }
 
-  // ----- Enter the board from janmasthan (birth onto square 1). -----
-  // The soul may only take birth on a roll of 6; any other roll is blocked and
-  // the turn passes to the next player. (A 6 also grants the usual extra roll,
-  // so the soul enters on square 1 and then rolls again to set off.)
+  // ----- Enter the board from janmasthan. -----
   if (position === JANMASTHAN) {
-    if (dice !== 6) {
-      return wrap(make(JANMASTHAN, dice, [], null, JANMASTHAN, 'blocked', []), mrutyuRollCount);
-    }
     const land = resolveLanding(1);
     const hops: MoveHop[] = [{ to: 1, kind: 'enter' }, ...land.hops];
     const outcome = land.won ? 'win' : land.hops.length > 0 ? land.outcome : 'enter';

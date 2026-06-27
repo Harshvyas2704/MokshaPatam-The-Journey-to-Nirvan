@@ -45,8 +45,7 @@ export const INSTRUCTION_SECTIONS: InstructionSection[] = [
       {
         title: 'Basic Gameplay',
         points: [
-          'Each soul begins at Janmasthan. Roll a 6 to take birth onto cell 1 (Manushyaloka) — any other roll skips your turn.',
-          'After taking birth, move by rolling the dice. A 6 always grants another roll.',
+          'Players start from Manushyaloka (human realm, cell 1) and move by rolling dice.',
           'Ladders = spiritual ascent; Snakes = spiritual fall.',
           'Land on a ladder → climb to its top; land on a snake’s head → descend to its tail.',
           'Neutral squares = stay and wait (periods of steady existence).',
