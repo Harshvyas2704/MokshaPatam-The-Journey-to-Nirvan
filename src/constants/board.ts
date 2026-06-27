@@ -134,16 +134,18 @@ export const BOARD_OVERLAY = {
   /** Snake eye color (a small dark dot on the head). */
   snakeEye: '#241310',
   /** Body half-width at the head, relative to cell size (tapers to the tail). */
-  snakeHeadHalfRatio: 0.038,
+  snakeHeadHalfRatio: 0.052,
   /** Body half-width at the tail, relative to cell size (near a point). */
-  snakeTailHalfRatio: 0.007,
+  snakeTailHalfRatio: 0.013,
   /**
    * Multi-headed serpents (many squares sharing one destination): a thick shared
    * trunk runs from the destination to the heads' junction, then thinner necks
    * branch out to each head. Widths are multiples of the normal head half-width.
    */
-  snakeTrunkScale: 1.5, // trunk half-width vs. a head
-  snakeNeckScale: 0.5, // branch (neck) half-width where it joins the trunk
+  snakeTrunkScale: 1.6, // trunk half-width vs. a head
+  snakeNeckScale: 0.62, // branch (neck) half-width where it joins the trunk
+  /** Head size vs. the body half-width — the head is bigger than the neck. */
+  snakeHeadScale: 1.55,
   /** Lateral sway of a snake body relative to its head→tail distance. */
   snakeAmplitudeRatio: 0.055,
   /** How many half-undulations per cell of length (gentle). */

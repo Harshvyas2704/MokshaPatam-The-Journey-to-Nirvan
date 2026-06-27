@@ -24,7 +24,13 @@ import Svg, {
 import { BOARD_OVERLAY } from '@/constants';
 import { ladders, offboardLadders, snakeClusters } from '@/data';
 import { lerp, mixHex } from '@/utils';
-import { buildLadder, buildSnakeBody, type Point } from '../svg';
+import {
+  buildLadder,
+  buildSnakeBody,
+  buildSnakeHead,
+  snakeHeadEyes,
+  type Point,
+} from '../svg';
 import { getCellCenter } from '../layout';
 import type { BoardLayout } from '../types';
 
@@ -41,6 +47,7 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
   const tailHalf = Math.max(0.6, cellSize * BOARD_OVERLAY.snakeTailHalfRatio);
   const trunkHalf = headHalf * BOARD_OVERLAY.snakeTrunkScale;
   const neckHalf = headHalf * BOARD_OVERLAY.snakeNeckScale;
+  const headSize = headHalf * BOARD_OVERLAY.snakeHeadScale;
   const railOffset = cellSize * BOARD_OVERLAY.railOffsetRatio;
   const rungSpacing = cellSize * BOARD_OVERLAY.rungSpacingRatio;
 
@@ -103,17 +110,6 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
       return { x1: mx + px * w, y1: my + py * w, x2: mx - px * w, y2: my - py * w };
     };
 
-    // A small eye dot on the head, nudged toward where the body leaves the head.
-    const eyeOf = (head: Point, toward: Point) => {
-      const d = Math.hypot(toward.x - head.x, toward.y - head.y) || 1;
-      const ux = (toward.x - head.x) / d;
-      const uy = (toward.y - head.y) / d;
-      return {
-        x: head.x + ux * headHalf * 0.5 - uy * headHalf * 0.42,
-        y: head.y + uy * headHalf * 0.5 + ux * headHalf * 0.42,
-      };
-    };
-
     // Shade green snakes by drop distance (short = light, long = dark); hell
     // snakes are red (deepest). Off-board destinations take the darkest shade.
     const greenDrops = snakeClusters
@@ -135,7 +131,7 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
     };
 
     type Body = { d: string; gradId: string; x1: number; y1: number; x2: number; y2: number };
-    type HeadGlyph = { x: number; y: number; eyeX: number; eyeY: number };
+    type HeadGlyph = { d: string; eyes: [Point, Point] };
     const built: {
       id: string;
       headGradId: string;
@@ -188,8 +184,10 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
         // Lone snake: a single serpent from its head down to the destination.
         const h = headPts[0];
         addBody(h, root, headHalf, tailHalf);
-        const eye = eyeOf(h, root);
-        heads.push({ x: h.x, y: h.y, eyeX: eye.x, eyeY: eye.y });
+        heads.push({
+          d: buildSnakeHead(h, root, headSize),
+          eyes: snakeHeadEyes(h, root, headSize),
+        });
       } else {
         // Multi-headed serpent: a thick trunk rises from the destination to a
         // junction, then thin necks branch out to each head. The junction is
@@ -205,15 +203,26 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
         addBody(junction, root, trunkHalf, tailHalf);
         for (const h of headPts) {
           addBody(h, junction, headHalf, neckHalf);
-          const eye = eyeOf(h, junction);
-          heads.push({ x: h.x, y: h.y, eyeX: eye.x, eyeY: eye.y });
+          heads.push({
+            d: buildSnakeHead(h, junction, headSize),
+            eyes: snakeHeadEyes(h, junction, headSize),
+          });
         }
       }
 
       built.push({ id: cluster.id, headGradId: `sg${ci}h`, light, dark, bodies, heads });
     });
     return built;
-  }, [centers, realmCenters, cellSize, headHalf, tailHalf, trunkHalf, neckHalf]);
+  }, [
+    centers,
+    realmCenters,
+    cellSize,
+    headHalf,
+    tailHalf,
+    trunkHalf,
+    neckHalf,
+    headSize,
+  ]);
 
   const ladderShapes = useMemo(() => {
     const built: {
@@ -335,19 +344,28 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
         ))}
       </Defs>
 
-      {/* Soft drop shadow cast under every body for depth. */}
+      {/* Soft drop shadow cast under every body + head for depth. */}
       <G
         transform={`translate(${BOARD_OVERLAY.snakeShadowDx} ${BOARD_OVERLAY.snakeShadowDy})`}
         opacity={BOARD_OVERLAY.snakeShadowOpacity}>
-        {snakeShapes.map(snake =>
-          snake.bodies.map(body => (
-            <Path
-              key={`${body.gradId}-shadow`}
-              d={body.d}
-              fill={BOARD_OVERLAY.snakeShadowColor}
-            />
-          )),
-        )}
+        {snakeShapes.map(snake => (
+          <React.Fragment key={`${snake.id}-shadow`}>
+            {snake.bodies.map(body => (
+              <Path
+                key={`${body.gradId}-shadow`}
+                d={body.d}
+                fill={BOARD_OVERLAY.snakeShadowColor}
+              />
+            ))}
+            {snake.heads.map((hd, i) => (
+              <Path
+                key={`${snake.id}-headshadow-${i}`}
+                d={hd.d}
+                fill={BOARD_OVERLAY.snakeShadowColor}
+              />
+            ))}
+          </React.Fragment>
+        ))}
       </G>
 
       {snakeShapes.map(snake => (
@@ -361,23 +379,24 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
               opacity={BOARD_OVERLAY.snakeBodyOpacity}
             />
           ))}
-          {/* A shaded sphere head + a single small eye at each source square. */}
+          {/* A tapered, shaded serpent head + two eyes at each source square. */}
           {snake.heads.map((hd, i) => (
             <React.Fragment key={`${snake.id}-head-${i}`}>
-              <Circle
-                cx={hd.x}
-                cy={hd.y}
-                r={headHalf}
+              <Path
+                d={hd.d}
                 fill={`url(#${snake.headGradId})`}
                 opacity={BOARD_OVERLAY.snakeBodyOpacity}
               />
-              <Circle
-                cx={hd.eyeX}
-                cy={hd.eyeY}
-                r={Math.max(0.8, headHalf * 0.28)}
-                fill={BOARD_OVERLAY.snakeEye}
-                opacity={BOARD_OVERLAY.snakeBodyOpacity}
-              />
+              {hd.eyes.map((eye, e) => (
+                <Circle
+                  key={`${snake.id}-eye-${i}-${e}`}
+                  cx={eye.x}
+                  cy={eye.y}
+                  r={Math.max(0.7, headSize * 0.16)}
+                  fill={BOARD_OVERLAY.snakeEye}
+                  opacity={BOARD_OVERLAY.snakeBodyOpacity}
+                />
+              ))}
             </React.Fragment>
           ))}
         </React.Fragment>
