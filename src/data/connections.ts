@@ -36,16 +36,27 @@ export const REALM_GLOSS: Record<string, string> = {
   'आत्मपरिभाण लोक': 'Realm of Self-Limitation',
 };
 
+/**
+ * Display name for a realm — strips the "-लेफ्ट"/"-राइट" (left/right) suffixes,
+ * which are layout-only tags distinguishing the several महानरक cells. To the
+ * player they are all simply महानरक.
+ */
+export function realmDisplayName(realm: string): string {
+  return realm.replace(/-(लेफ्ट|राइट)$/, '');
+}
+
+/** Plain-English gloss for a realm, with the left/right tag removed. */
+export function realmGloss(realm: string): string | undefined {
+  return REALM_GLOSS[realmDisplayName(realm)] ?? REALM_GLOSS[realm];
+}
+
 /** Label an endpoint for display ("Square 200" or the realm name + gloss). */
 export function endpointLabel(endpoint: Endpoint): string {
   if (typeof endpoint === 'number') {
     return `Square ${endpoint}`;
   }
-  // The "-लेफ्ट"/"-राइट" (left/right) suffixes are layout-only tags that
-  // distinguish the several महानरक cells on the board; to the player they are
-  // all simply महानरक, so strip the direction for display.
-  const display = endpoint.replace(/-(लेफ्ट|राइट)$/, '');
-  const gloss = REALM_GLOSS[display] ?? REALM_GLOSS[endpoint];
+  const display = realmDisplayName(endpoint);
+  const gloss = realmGloss(endpoint);
   return gloss ? `${display} — ${gloss}` : display;
 }
 

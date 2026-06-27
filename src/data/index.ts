@@ -45,6 +45,8 @@ export { concepts } from './concepts';
 export {
   getCellConnections,
   endpointLabel,
+  realmDisplayName,
+  realmGloss,
   cellEnglishName,
   REALM_GLOSS,
   type CellConnection,

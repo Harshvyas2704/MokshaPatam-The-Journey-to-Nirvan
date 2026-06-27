@@ -20,7 +20,7 @@ import type {
   Position,
   Snake,
 } from '@/types';
-import { REALM_GLOSS } from '@/data';
+import { realmDisplayName, realmGloss } from '@/data';
 
 export type SpiritualEventKind =
   | 'snake'
@@ -109,8 +109,8 @@ export function describeEvent(
     return {
       kind: 'narak',
       label: 'Naraka',
-      sanskrit: move.to,
-      translation: REALM_GLOSS[move.to],
+      sanskrit: realmDisplayName(move.to),
+      translation: realmGloss(move.to),
       message: 'The soul has fallen into a naraka. It must find its way back.',
       from: move.from,
       to: move.to,
