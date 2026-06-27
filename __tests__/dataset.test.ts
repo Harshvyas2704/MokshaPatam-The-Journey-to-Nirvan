@@ -12,6 +12,7 @@ import {
   laddersRaw,
   offboardLadders,
   offboardSnakes,
+  snakeClusters,
   snakes,
   snakesRaw,
 } from '@/data';
@@ -71,6 +72,31 @@ describe('snakes', () => {
     for (const s of snakes) {
       expect(snakeMap[s.from]).toBe(s.to);
     }
+  });
+});
+
+describe('snakeClusters (multi-headed render grouping)', () => {
+  it('round-trips to EXACTLY snakesRaw — no head/destination added or lost', () => {
+    // Flatten every cluster back into a head -> destination map.
+    const rebuilt: Record<string, number | string> = {};
+    let headCount = 0;
+    for (const cluster of snakeClusters) {
+      for (const head of cluster.heads) {
+        const key = String(head);
+        // Each head must be unique across all clusters (no duplication).
+        expect(rebuilt[key]).toBeUndefined();
+        rebuilt[key] = cluster.to;
+        headCount++;
+      }
+    }
+    // Same number of entries, and identical key/value pairs as the source.
+    expect(headCount).toBe(Object.keys(snakesRaw).length);
+    expect(rebuilt).toEqual(snakesRaw);
+  });
+
+  it('groups every shared destination (each appears once)', () => {
+    const destinations = snakeClusters.map(c => String(c.to));
+    expect(new Set(destinations).size).toBe(destinations.length);
   });
 });
 

@@ -24,10 +24,12 @@ import {
   withTiming,
   type AnimatedStyle,
 } from 'react-native-reanimated';
-import { SOUL_MOVEMENT } from '@/constants';
 import { positionKey } from '@/data';
 import { useGameStore } from '@/store';
-import { getMovePath } from '@/features/game/logic/movement';
+import { buildSnakeCenterlines } from '@/features/board/svg';
+import { buildSoulJourney } from '@/features/game/logic';
+import { SOUL_MOVEMENT } from '@/constants';
+import type { JourneyLeg } from '@/features/game/logic';
 import type { PlayerState } from '@/types';
 import type { BoardLayout } from '@/features/board/types';
 import { getSoulCenter } from '../positioning';
@@ -35,6 +37,11 @@ import { getSoulCenter } from '../positioning';
 interface Point {
   x: number;
   y: number;
+}
+
+/** Motion curve for a leg: walk/slither glide linearly, a leap eases in-out. */
+function easingFor(kind: JourneyLeg['kind']): (t: number) => number {
+  return kind === 'jump' ? Easing.inOut(Easing.ease) : Easing.linear;
 }
 
 export function useSoulMovement(
@@ -65,6 +72,13 @@ export function useSoulMovement(
     return map;
   }, [layout]);
 
+  // Per-head snake spines, so a downward snake hop glides along the very curve
+  // the player sees instead of cutting straight to the tail.
+  const snakeCenterlines = useMemo(
+    () => buildSnakeCenterlines(key => centers.get(key), layout.dimensions.cellSize),
+    [centers, layout.dimensions.cellSize],
+  );
+
   const posKey = positionKey(player.realm ?? player.currentSquare);
   const start = centers.get(posKey);
   const translateX = useSharedValue(start ? start.x : 0);
@@ -94,24 +108,24 @@ export function useSoulMovement(
     if (!from) {
       return; // centers not ready yet; re-runs when they are
     }
-    const rawPath = getMovePath(lastMove);
-    const targets = rawPath
-      .map(p => centers.get(positionKey(p)))
-      .filter((p): p is Point => p !== undefined);
-    if (rawPath.length > 0 && targets.length !== rawPath.length) {
+
+    // Build the journey (walk + snake-spine slither + jumps) — shared with the
+    // camera so the board travels in step with the soul.
+    const legs = buildSoulJourney(lastMove, centers, snakeCenterlines);
+    if (!legs) {
       return; // some centers missing — wait until ready
     }
     animatedRollId.current = totalRolls;
 
     // Blocked move (overshoot / stuck on the grave): nothing to animate.
-    if (targets.length === 0) {
+    if (legs.length === 0) {
       setMoving(false);
       return;
     }
 
     // Reduced Motion: snap straight to the final position.
     if (reduceMotion) {
-      const last = targets[targets.length - 1];
+      const last = legs[legs.length - 1];
       translateX.value = last.x;
       translateY.value = last.y;
       setMoving(false);
@@ -121,23 +135,16 @@ export function useSoulMovement(
     translateX.value = from.x;
     translateY.value = from.y;
 
-    const stepCount = lastMove.steps.length;
-    const lastIndex = targets.length - 1;
-    const timing = (i: number) =>
-      i < stepCount
-        ? { duration: SOUL_MOVEMENT.stepDurationMs, easing: Easing.linear }
-        : {
-            duration: SOUL_MOVEMENT.jumpDurationMs,
-            easing: Easing.inOut(Easing.ease),
-          };
-
+    const lastIndex = legs.length - 1;
     // On a turn switch, hold at the start while the camera glides over.
     const hold = { duration: SOUL_MOVEMENT.prePanMs, easing: Easing.linear };
-    const xSteps = targets.map((p, i) => withTiming(p.x, timing(i)));
-    const ySteps = targets.map((p, i) =>
+    const xSteps = legs.map(leg =>
+      withTiming(leg.x, { duration: leg.duration, easing: easingFor(leg.kind) }),
+    );
+    const ySteps = legs.map((leg, i) =>
       withTiming(
-        p.y,
-        timing(i),
+        leg.y,
+        { duration: leg.duration, easing: easingFor(leg.kind) },
         i === lastIndex
           ? (finished?: boolean) => {
               'worklet';
@@ -162,6 +169,7 @@ export function useSoulMovement(
     turnSwitched,
     totalRolls,
     centers,
+    snakeCenterlines,
     setMoving,
     translateX,
     translateY,

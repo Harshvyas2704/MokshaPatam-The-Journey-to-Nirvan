@@ -54,6 +54,12 @@ export const SOUL_MOVEMENT = {
   stepDurationMs: 170,
   jumpDurationMs: 650,
   /**
+   * Time per point of a snake's drawn spine when the soul slithers DOWN it.
+   * Applied per spine point (not as a fixed total) so the descent keeps a calm,
+   * constant speed whether the serpent is short or long. Raise to slow it down.
+   */
+  snakeStepDurationMs: 62,
+  /**
    * When the turn passes to a different player, the camera first glides to that
    * player's token (and the token holds still) for this long, BEFORE the move
    * animation begins — so the board "scrolls there first, then starts moving".

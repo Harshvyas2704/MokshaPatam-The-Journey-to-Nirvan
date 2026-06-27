@@ -109,6 +109,13 @@ export const BOARD_OVERLAY = {
   ladderDarkColor: '#7C2118', // long climb — deep red
   snakeLightColor: '#9FC68C', // short drop — light green
   snakeDarkColor: '#2C5320', // long drop — deep green
+  /**
+   * Mahanarak (hell) serpents are RED instead of green — the gravest fall. The
+   * multi-headed hell snakes (many squares → one महानरक cell) take this ramp,
+   * deepest = darkest.
+   */
+  snakeHellLightColor: '#C45A4C', // light hell red
+  snakeHellDarkColor: '#7A150C', // deep hell red
   /** Floor for the ramp so even the shortest path keeps a touch of tint. */
   pathShadeFloor: 0.18,
 
@@ -130,10 +137,24 @@ export const BOARD_OVERLAY = {
   snakeHeadHalfRatio: 0.038,
   /** Body half-width at the tail, relative to cell size (near a point). */
   snakeTailHalfRatio: 0.007,
+  /**
+   * Multi-headed serpents (many squares sharing one destination): a thick shared
+   * trunk runs from the destination to the heads' junction, then thinner necks
+   * branch out to each head. Widths are multiples of the normal head half-width.
+   */
+  snakeTrunkScale: 1.5, // trunk half-width vs. a head
+  snakeNeckScale: 0.5, // branch (neck) half-width where it joins the trunk
   /** Lateral sway of a snake body relative to its head→tail distance. */
-  snakeAmplitudeRatio: 0.085,
+  snakeAmplitudeRatio: 0.055,
   /** How many half-undulations per cell of length (gentle). */
-  snakeWavesPerCell: 0.4,
+  snakeWavesPerCell: 0.32,
+  /**
+   * Where a multi-headed serpent's branches converge, as a fraction from the
+   * destination toward the heads' centroid (0 = at the destination, 1 = at the
+   * centroid). Kept low so every neck points TOWARD the destination — a head on
+   * the far side of the root still reads as flowing into it.
+   */
+  snakeJunctionBias: 0.4,
   /** Snake opacity — present but calm, not highlighting. */
   snakeOpacity: 0.55,
 } as const;

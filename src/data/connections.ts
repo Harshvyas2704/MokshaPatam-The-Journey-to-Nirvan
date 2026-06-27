@@ -41,8 +41,12 @@ export function endpointLabel(endpoint: Endpoint): string {
   if (typeof endpoint === 'number') {
     return `Square ${endpoint}`;
   }
-  const gloss = REALM_GLOSS[endpoint];
-  return gloss ? `${endpoint} — ${gloss}` : endpoint;
+  // The "-लेफ्ट"/"-राइट" (left/right) suffixes are layout-only tags that
+  // distinguish the several महानरक cells on the board; to the player they are
+  // all simply महानरक, so strip the direction for display.
+  const display = endpoint.replace(/-(लेफ्ट|राइट)$/, '');
+  const gloss = REALM_GLOSS[display] ?? REALM_GLOSS[endpoint];
+  return gloss ? `${display} — ${gloss}` : display;
 }
 
 /** All snake/ladder connections touching a given square. */

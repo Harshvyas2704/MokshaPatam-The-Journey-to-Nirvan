@@ -25,11 +25,13 @@ export {
   snakes,
   snakesRaw,
   offboardSnakes,
+  snakeClusters,
   snakeHeads,
   snakeTails,
   snakeTailFrom,
   snakeToHell,
   SNAKE_WAYPOINTS,
+  type SnakeCluster,
 } from './snakes';
 export {
   ladders,

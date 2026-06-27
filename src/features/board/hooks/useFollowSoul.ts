@@ -19,14 +19,20 @@ import {
 import { SOUL_MOVEMENT } from '@/constants';
 import { positionKey } from '@/data';
 import { useGameStore } from '@/store';
-import { getMovePath } from '@/features/game/logic/movement';
+import { buildSoulJourney, type JourneyLeg } from '@/features/game/logic';
 import { getCellCenter } from '../layout';
+import { buildSnakeCenterlines } from '../svg';
 import { clampOffset } from '../zoom';
 import type { BoardLayout } from '../types';
 
 interface Point {
   x: number;
   y: number;
+}
+
+/** Motion curve for a leg: walk/slither glide linearly, a leap eases in-out. */
+function easingFor(kind: JourneyLeg['kind']): (t: number) => number {
+  return kind === 'jump' ? Easing.inOut(Easing.ease) : Easing.linear;
 }
 
 interface FollowSoulParams {
@@ -66,6 +72,16 @@ export function useFollowSoul({
     return map;
   }, [layout]);
 
+  // Snake spines (same as the soul uses) so the camera tracks a slithering
+  // descent point-for-point instead of leaping to the tail.
+  const snakeCenterlines = useMemo(
+    () =>
+      layout
+        ? buildSnakeCenterlines(key => centers.get(key), layout.dimensions.cellSize)
+        : new Map<number | string, Point[]>(),
+    [centers, layout],
+  );
+
   useEffect(() => {
     if (!layout || !lastMove || followedRollId.current === totalRolls) {
       return;
@@ -73,10 +89,10 @@ export function useFollowSoul({
     if (viewportWidth <= 0 || viewportHeight <= 0) {
       return;
     }
-    const targets = getMovePath(lastMove)
-      .map(p => centers.get(positionKey(p)))
-      .filter((p): p is Point => p !== undefined);
-    if (targets.length === 0) {
+    // Replay the SAME journey the soul plays (walk + snake-spine slither +
+    // jumps) so the board travels in lock-step with it.
+    const legs = buildSoulJourney(lastMove, centers, snakeCenterlines);
+    if (!legs || legs.length === 0) {
       // Blocked move (or centers not ready). Mark handled so we don't loop.
       followedRollId.current = totalRolls;
       return;
@@ -85,7 +101,6 @@ export function useFollowSoul({
 
     const { boardWidth, boardHeight } = layout.dimensions;
     const s = scale.value; // sample the zoom at the start of the move
-    const stepCount = lastMove.steps.length;
 
     // Offset that centers a given board-local point, clamped to pan bounds.
     const offsetFor = (point: Point) => ({
@@ -101,16 +116,11 @@ export function useFollowSoul({
       ),
     });
 
-    // Match the soul's per-step / per-jump cadence so the camera tracks it.
-    const timing = (i: number) =>
-      i < stepCount
-        ? { duration: SOUL_MOVEMENT.stepDurationMs, easing: Easing.linear }
-        : {
-            duration: SOUL_MOVEMENT.jumpDurationMs,
-            easing: Easing.inOut(Easing.ease),
-          };
-
-    const offsets = targets.map(offsetFor);
+    const offsets = legs.map(leg => ({
+      ...offsetFor(leg),
+      duration: leg.duration,
+      easing: easingFor(leg.kind),
+    }));
 
     // Reduced Motion: jump straight to the final framing, no glide.
     if (reduceMotion) {
@@ -120,8 +130,12 @@ export function useFollowSoul({
       return;
     }
 
-    const xSteps = offsets.map((o, i) => withTiming(o.x, timing(i)));
-    const ySteps = offsets.map((o, i) => withTiming(o.y, timing(i)));
+    const xSteps = offsets.map(o =>
+      withTiming(o.x, { duration: o.duration, easing: o.easing }),
+    );
+    const ySteps = offsets.map(o =>
+      withTiming(o.y, { duration: o.duration, easing: o.easing }),
+    );
 
     // On a turn switch, first glide the camera to the new player's token
     // (its starting cell) before following the move — "scroll there first".
@@ -144,6 +158,7 @@ export function useFollowSoul({
     totalRolls,
     turnSwitched,
     centers,
+    snakeCenterlines,
     scale,
     translateX,
     translateY,

@@ -88,6 +88,64 @@ export const offboardSnakes: { id: string; from: number | string; to: string }[]
       to: String(to),
     }));
 
+/**
+ * The mahanarak hells. Snakes that fall into one of these are drawn RED
+ * (the gravest descent); every other snake is green.
+ */
+const HELL_REALMS = new Set<string>([
+  'महानरक',
+  'महानरक-लेफ्ट',
+  'महानरक-राइट',
+]);
+
+/**
+ * A multi-headed serpent: every snake that shares a single destination, drawn
+ * as ONE creature — a shared body rooted at the destination with a head at each
+ * source square — rather than one full serpent per source (which overlapped
+ * into a tangle). Derived purely from `snakesRaw`; the actual head→destination
+ * data is unchanged (and still drives gameplay via `snakeToHell`).
+ */
+export interface SnakeCluster {
+  id: string;
+  /** Destination of every head: a numeric square or an off-board realm. */
+  to: number | string;
+  /** Source heads (numeric squares and/or realm origins) feeding this body. */
+  heads: (number | string)[];
+  /** Destination is a mahanarak hell (drawn red, not green). */
+  isHell: boolean;
+  /** Largest numeric drop among the heads (shading); null when off-board. */
+  maxDrop: number | null;
+}
+
+export const snakeClusters: SnakeCluster[] = (() => {
+  // Group every raw entry by its destination.
+  const byDest = new Map<number | string, (number | string)[]>();
+  for (const [headKey, dest] of Object.entries(snakesRaw)) {
+    const headNum = Number(headKey);
+    const head: number | string = Number.isNaN(headNum) ? headKey : headNum;
+    const list = byDest.get(dest) ?? [];
+    list.push(head);
+    byDest.set(dest, list);
+  }
+  const clusters: SnakeCluster[] = [];
+  byDest.forEach((heads, dest) => {
+    const numericDrops =
+      typeof dest === 'number'
+        ? heads
+            .filter((h): h is number => typeof h === 'number')
+            .map(h => h - dest)
+        : [];
+    clusters.push({
+      id: `snake-cluster-${dest}`,
+      to: dest,
+      heads,
+      isHell: typeof dest === 'string' && HELL_REALMS.has(dest),
+      maxDrop: numericDrops.length ? Math.max(...numericDrops) : null,
+    });
+  });
+  return clusters;
+})();
+
 export const SNAKE_WAYPOINTS: Record<number, [number, number]> = {
   263: [215, 216],
   244: [179, 180],

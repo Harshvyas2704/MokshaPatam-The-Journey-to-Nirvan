@@ -137,6 +137,29 @@ export function buildSnakeBody(
 }
 
 /**
+ * The undulating CENTERLINE of a snake body, as a list of points (the spine the
+ * fill in `buildSnakeBody` is built around). Returned so the soul token can
+ * SLITHER down the very same curve it sees, rather than cutting straight to the
+ * tail. Sampled identically to `buildSnakeBody` so the two stay in lock-step.
+ */
+export function sampleSnakeCenterline(
+  head: Point,
+  tail: Point,
+  amplitude: number,
+  waves: number,
+): Point[] {
+  const { dx, dy, px, py } = basis(head, tail);
+  const segments = Math.max(16, Math.round(waves * 8));
+  const points: Point[] = [];
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments;
+    const off = Math.sin(t * Math.PI * waves) * amplitude;
+    points.push({ x: head.x + dx * t + px * off, y: head.y + dy * t + py * off });
+  }
+  return points;
+}
+
+/**
  * Two parallel rails (offset `railOffset` either side of the base->top line)
  * plus rungs spaced roughly every `rungSpacing` px, capped at `maxRungs` so a
  * ladder spanning much of the board doesn't produce hundreds of SVG nodes.

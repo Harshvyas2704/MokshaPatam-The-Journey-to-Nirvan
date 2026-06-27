@@ -13,7 +13,7 @@ import React, { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import Svg, { Circle, Line, Path } from 'react-native-svg';
 import { BOARD_OVERLAY } from '@/constants';
-import { ladders, offboardLadders, offboardSnakes, snakes } from '@/data';
+import { ladders, offboardLadders, snakeClusters } from '@/data';
 import { lerp, mixHex } from '@/utils';
 import { buildLadder, buildSnakeBody, type Point } from '../svg';
 import { getCellCenter } from '../layout';
@@ -30,6 +30,8 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
   const ladderStroke = Math.max(1.5, cellSize * BOARD_OVERLAY.ladderStrokeRatio);
   const headHalf = Math.max(2.5, cellSize * BOARD_OVERLAY.snakeHeadHalfRatio);
   const tailHalf = Math.max(0.6, cellSize * BOARD_OVERLAY.snakeTailHalfRatio);
+  const trunkHalf = headHalf * BOARD_OVERLAY.snakeTrunkScale;
+  const neckHalf = headHalf * BOARD_OVERLAY.snakeNeckScale;
   const railOffset = cellSize * BOARD_OVERLAY.railOffsetRatio;
   const rungSpacing = cellSize * BOARD_OVERLAY.rungSpacingRatio;
 
@@ -51,41 +53,55 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
   }, [layout]);
 
   const snakeShapes = useMemo(() => {
-    // On-board snakes + off-board snakes (numeric head -> realm cell). `mag` is
-    // how far the soul falls; `null` for realm-bound snakes (deepest of all).
-    const entries: {
-      id: string;
-      head: Point;
-      tail: Point;
-      mag: number | null;
-    }[] = [];
-    for (const s of snakes) {
-      const head = centers.get(s.from);
-      const tail = centers.get(s.to);
-      if (head && tail) {
-        entries.push({ id: s.id, head, tail, mag: s.from - s.to });
-      }
-    }
-    for (const s of offboardSnakes) {
-      // Numeric head -> realm cell, AND realm -> realm (loka -> hell/grave).
-      const head =
-        typeof s.from === 'number'
-          ? centers.get(s.from)
-          : realmCenters.get(s.from);
-      const tail = realmCenters.get(s.to);
-      if (head && tail) {
-        entries.push({ id: s.id, head, tail, mag: null }); // off-board = deepest fall
-      }
-    }
+    // Resolve a head/destination key (numeric square or realm string) to a point.
+    const resolve = (key: number | string): Point | undefined =>
+      typeof key === 'number' ? centers.get(key) : realmCenters.get(key);
 
-    // Shade each snake GREEN by drop distance (short = light, long = dark).
-    const numericMags = entries
-      .map(e => e.mag)
-      .filter((m): m is number => m !== null);
-    const minMag = numericMags.length ? Math.min(...numericMags) : 0;
-    const maxMag = numericMags.length ? Math.max(...numericMags) : 1;
-    const colorOf = (mag: number | null): string => {
-      const t = mag === null ? 1 : (mag - minMag) / (maxMag - minMag || 1);
+    // One tapered body segment (wide head -> thinner tail) with length-based sway.
+    const segment = (
+      from: Point,
+      to: Point,
+      fromHalf: number,
+      toHalf: number,
+    ): string => {
+      const distance = Math.hypot(to.x - from.x, to.y - from.y);
+      const waves = Math.max(
+        2,
+        Math.round((distance / cellSize) * BOARD_OVERLAY.snakeWavesPerCell),
+      );
+      return buildSnakeBody(
+        from,
+        to,
+        distance * BOARD_OVERLAY.snakeAmplitudeRatio,
+        waves,
+        fromHalf,
+        toHalf,
+      );
+    };
+
+    // A small eye dot on the head, nudged toward where the body leaves the head.
+    const eyeOf = (head: Point, toward: Point) => {
+      const d = Math.hypot(toward.x - head.x, toward.y - head.y) || 1;
+      const ux = (toward.x - head.x) / d;
+      const uy = (toward.y - head.y) / d;
+      return {
+        x: head.x + ux * headHalf * 0.5 - uy * headHalf * 0.42,
+        y: head.y + uy * headHalf * 0.5 + ux * headHalf * 0.42,
+      };
+    };
+
+    // Shade green snakes by drop distance (short = light, long = dark); hell
+    // snakes are red (deepest). Off-board destinations take the darkest shade.
+    const greenDrops = snakeClusters
+      .filter(c => !c.isHell && c.maxDrop !== null)
+      .map(c => c.maxDrop as number);
+    const minDrop = greenDrops.length ? Math.min(...greenDrops) : 0;
+    const maxDrop = greenDrops.length ? Math.max(...greenDrops) : 1;
+    const colorOf = (isHell: boolean, drop: number | null): string => {
+      if (isHell) {
+        return BOARD_OVERLAY.snakeHellDarkColor; // every great hell = deep red
+      }
+      const t = drop === null ? 1 : (drop - minDrop) / (maxDrop - minDrop || 1);
       const shade = lerp(BOARD_OVERLAY.pathShadeFloor, 1, t);
       return mixHex(
         BOARD_OVERLAY.snakeLightColor,
@@ -94,34 +110,64 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
       );
     };
 
-    return entries.map(({ id, head, tail, mag }) => {
-      const distance = Math.hypot(tail.x - head.x, tail.y - head.y);
-      const waves = Math.max(
-        2,
-        Math.round((distance / cellSize) * BOARD_OVERLAY.snakeWavesPerCell),
-      );
-      // Unit direction head->tail, and its perpendicular, for eye placement.
-      const ux = (tail.x - head.x) / (distance || 1);
-      const uy = (tail.y - head.y) / (distance || 1);
-      return {
-        id,
-        color: colorOf(mag),
-        body: buildSnakeBody(
-          head,
-          tail,
-          distance * BOARD_OVERLAY.snakeAmplitudeRatio,
-          waves,
-          headHalf,
-          tailHalf,
-        ),
-        head,
-        eye: {
-          x: head.x + ux * headHalf * 0.5 + -uy * headHalf * 0.42,
-          y: head.y + uy * headHalf * 0.5 + ux * headHalf * 0.42,
-        },
-      };
-    });
-  }, [centers, realmCenters, cellSize, headHalf, tailHalf]);
+    type HeadGlyph = { x: number; y: number; eyeX: number; eyeY: number };
+    const built: {
+      id: string;
+      color: string;
+      paths: string[];
+      heads: HeadGlyph[];
+    }[] = [];
+
+    for (const cluster of snakeClusters) {
+      const root = resolve(cluster.to);
+      if (!root) {
+        continue;
+      }
+      const headPts: Point[] = [];
+      for (const h of cluster.heads) {
+        const p = resolve(h);
+        if (p) {
+          headPts.push(p);
+        }
+      }
+      if (headPts.length === 0) {
+        continue;
+      }
+
+      const color = colorOf(cluster.isHell, cluster.maxDrop);
+      const paths: string[] = [];
+      const heads: HeadGlyph[] = [];
+
+      if (headPts.length === 1) {
+        // Lone snake: a single serpent from its head down to the destination.
+        const h = headPts[0];
+        paths.push(segment(h, root, headHalf, tailHalf));
+        const eye = eyeOf(h, root);
+        heads.push({ x: h.x, y: h.y, eyeX: eye.x, eyeY: eye.y });
+      } else {
+        // Multi-headed serpent: a thick trunk rises from the destination to a
+        // junction, then thin necks branch out to each head. The junction is
+        // pulled toward the destination (not the bare centroid) so every neck
+        // points INTO the destination — fixing heads that sit on the far side.
+        const cx = headPts.reduce((s, p) => s + p.x, 0) / headPts.length;
+        const cy = headPts.reduce((s, p) => s + p.y, 0) / headPts.length;
+        const bias = BOARD_OVERLAY.snakeJunctionBias;
+        const junction: Point = {
+          x: root.x + (cx - root.x) * bias,
+          y: root.y + (cy - root.y) * bias,
+        };
+        paths.push(segment(junction, root, trunkHalf, tailHalf));
+        for (const h of headPts) {
+          paths.push(segment(h, junction, headHalf, neckHalf));
+          const eye = eyeOf(h, junction);
+          heads.push({ x: h.x, y: h.y, eyeX: eye.x, eyeY: eye.y });
+        }
+      }
+
+      built.push({ id: cluster.id, color, paths, heads });
+    }
+    return built;
+  }, [centers, realmCenters, cellSize, headHalf, tailHalf, trunkHalf, neckHalf]);
 
   const ladderShapes = useMemo(() => {
     const built: {
@@ -214,27 +260,34 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
 
       {snakeShapes.map(snake => (
         <React.Fragment key={snake.id}>
-          {/* Tapered serpent body (wide head -> thin tail). */}
-          <Path
-            d={snake.body}
-            fill={snake.color}
-            opacity={BOARD_OVERLAY.snakeOpacity}
-          />
-          {/* Rounded head + a single small eye (subtle, not cartoonish). */}
-          <Circle
-            cx={snake.head.x}
-            cy={snake.head.y}
-            r={headHalf}
-            fill={snake.color}
-            opacity={BOARD_OVERLAY.snakeOpacity}
-          />
-          <Circle
-            cx={snake.eye.x}
-            cy={snake.eye.y}
-            r={Math.max(0.8, headHalf * 0.28)}
-            fill={BOARD_OVERLAY.snakeEye}
-            opacity={BOARD_OVERLAY.snakeOpacity}
-          />
+          {/* Shared trunk + branch necks (wide head -> thin tail), all one body. */}
+          {snake.paths.map((d, i) => (
+            <Path
+              key={`${snake.id}-body-${i}`}
+              d={d}
+              fill={snake.color}
+              opacity={BOARD_OVERLAY.snakeOpacity}
+            />
+          ))}
+          {/* A rounded head + a single small eye at each source square. */}
+          {snake.heads.map((hd, i) => (
+            <React.Fragment key={`${snake.id}-head-${i}`}>
+              <Circle
+                cx={hd.x}
+                cy={hd.y}
+                r={headHalf}
+                fill={snake.color}
+                opacity={BOARD_OVERLAY.snakeOpacity}
+              />
+              <Circle
+                cx={hd.eyeX}
+                cy={hd.eyeY}
+                r={Math.max(0.8, headHalf * 0.28)}
+                fill={BOARD_OVERLAY.snakeEye}
+                opacity={BOARD_OVERLAY.snakeOpacity}
+              />
+            </React.Fragment>
+          ))}
         </React.Fragment>
       ))}
     </Svg>

@@ -7,3 +7,4 @@
 export * from './dice';
 export * from './movement';
 export * from './boardMaps';
+export * from './journey';
