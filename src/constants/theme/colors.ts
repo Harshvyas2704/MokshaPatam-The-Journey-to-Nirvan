@@ -34,8 +34,12 @@ export const colors = {
   cellBg: '#F7F2E8', // default near-white tile
   cellBorder: '#D8C9AD',
   cellLadderBg: '#DCEAD3', // ladder destination — light green
+  cellLadderBgFrom: '#EAF4E1', // gradient top-left (lighter green)
+  cellLadderBgTo: '#C2DAB1', // gradient bottom-right (deeper green)
   cellLadderBorder: '#7FA86A',
   cellSnakeBg: '#F5D9D4', // snake head / start — light red
+  cellSnakeBgFrom: '#FCE8E4', // gradient top-left (lighter red)
+  cellSnakeBgTo: '#EDBEB5', // gradient bottom-right (deeper red)
   cellSnakeBorder: '#CC7A6E',
   cellText: '#3E2A1C', // dark ink for light tiles
   cellTextMuted: '#7A6048',

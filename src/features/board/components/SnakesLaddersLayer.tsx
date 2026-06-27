@@ -139,6 +139,9 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
       dark: string;
       bodies: Body[];
       heads: HeadGlyph[];
+      /** Where a multi-headed serpent forks — a small bulge that fills the fork
+       *  smoothly so the necks read as one body splitting, not piled snakes. */
+      hub: { x: number; y: number; r: number } | null;
     }[] = [];
 
     snakeClusters.forEach((cluster, ci) => {
@@ -180,6 +183,7 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
         });
       };
 
+      let hub: { x: number; y: number; r: number } | null = null;
       if (headPts.length === 1) {
         // Lone snake: a single serpent from its head down to the destination.
         const h = headPts[0];
@@ -208,9 +212,10 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
             eyes: snakeHeadEyes(h, junction, headSize),
           });
         }
+        hub = { x: junction.x, y: junction.y, r: trunkHalf * 1.25 };
       }
 
-      built.push({ id: cluster.id, headGradId: `sg${ci}h`, light, dark, bodies, heads });
+      built.push({ id: cluster.id, headGradId: `sg${ci}h`, light, dark, bodies, heads, hub });
     });
     return built;
   }, [
@@ -350,6 +355,14 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
         opacity={BOARD_OVERLAY.snakeShadowOpacity}>
         {snakeShapes.map(snake => (
           <React.Fragment key={`${snake.id}-shadow`}>
+            {snake.hub ? (
+              <Circle
+                cx={snake.hub.x}
+                cy={snake.hub.y}
+                r={snake.hub.r}
+                fill={BOARD_OVERLAY.snakeShadowColor}
+              />
+            ) : null}
             {snake.bodies.map(body => (
               <Path
                 key={`${body.gradId}-shadow`}
@@ -368,25 +381,28 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
         ))}
       </G>
 
+      {/* Each serpent is drawn inside ONE opacity group so its overlapping
+          necks/trunk/hub composite a single time — no dark double-opacity seams
+          where the body forks; it reads as one snake splitting into parts. */}
       {snakeShapes.map(snake => (
-        <React.Fragment key={snake.id}>
+        <G key={snake.id} opacity={BOARD_OVERLAY.snakeBodyOpacity}>
+          {/* Fork bulge first (under the necks) to fill the split smoothly. */}
+          {snake.hub ? (
+            <Circle
+              cx={snake.hub.x}
+              cy={snake.hub.y}
+              r={snake.hub.r}
+              fill={`url(#${snake.headGradId})`}
+            />
+          ) : null}
           {/* Shared trunk + branch necks, each filled as a rounded tube. */}
           {snake.bodies.map(body => (
-            <Path
-              key={body.gradId}
-              d={body.d}
-              fill={`url(#${body.gradId})`}
-              opacity={BOARD_OVERLAY.snakeBodyOpacity}
-            />
+            <Path key={body.gradId} d={body.d} fill={`url(#${body.gradId})`} />
           ))}
           {/* A tapered, shaded serpent head + two eyes at each source square. */}
           {snake.heads.map((hd, i) => (
             <React.Fragment key={`${snake.id}-head-${i}`}>
-              <Path
-                d={hd.d}
-                fill={`url(#${snake.headGradId})`}
-                opacity={BOARD_OVERLAY.snakeBodyOpacity}
-              />
+              <Path d={hd.d} fill={`url(#${snake.headGradId})`} />
               {hd.eyes.map((eye, e) => (
                 <Circle
                   key={`${snake.id}-eye-${i}-${e}`}
@@ -394,12 +410,11 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
                   cy={eye.y}
                   r={Math.max(0.7, headSize * 0.16)}
                   fill={BOARD_OVERLAY.snakeEye}
-                  opacity={BOARD_OVERLAY.snakeBodyOpacity}
                 />
               ))}
             </React.Fragment>
           ))}
-        </React.Fragment>
+        </G>
       ))}
     </Svg>
   );
