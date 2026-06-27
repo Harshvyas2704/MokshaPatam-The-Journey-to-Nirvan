@@ -11,7 +11,16 @@
  */
 import React, { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
-import Svg, { Circle, Line, Path } from 'react-native-svg';
+import Svg, {
+  Circle,
+  Defs,
+  G,
+  Line,
+  LinearGradient,
+  Path,
+  RadialGradient,
+  Stop,
+} from 'react-native-svg';
 import { BOARD_OVERLAY } from '@/constants';
 import { ladders, offboardLadders, snakeClusters } from '@/data';
 import { lerp, mixHex } from '@/utils';
@@ -79,6 +88,21 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
       );
     };
 
+    // The gradient axis ACROSS a body segment (perpendicular to its direction),
+    // centered on the segment, so the fill runs dark edge -> light core -> dark
+    // edge and the ribbon reads as a rounded tube.
+    const axisOf = (from: Point, to: Point, fromHalf: number, toHalf: number) => {
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const len = Math.hypot(dx, dy) || 1;
+      const px = -dy / len; // unit perpendicular
+      const py = dx / len;
+      const w = Math.max(fromHalf, toHalf) * 1.15;
+      const mx = (from.x + to.x) / 2;
+      const my = (from.y + to.y) / 2;
+      return { x1: mx + px * w, y1: my + py * w, x2: mx - px * w, y2: my - py * w };
+    };
+
     // A small eye dot on the head, nudged toward where the body leaves the head.
     const eyeOf = (head: Point, toward: Point) => {
       const d = Math.hypot(toward.x - head.x, toward.y - head.y) || 1;
@@ -110,18 +134,21 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
       );
     };
 
+    type Body = { d: string; gradId: string; x1: number; y1: number; x2: number; y2: number };
     type HeadGlyph = { x: number; y: number; eyeX: number; eyeY: number };
     const built: {
       id: string;
-      color: string;
-      paths: string[];
+      headGradId: string;
+      light: string;
+      dark: string;
+      bodies: Body[];
       heads: HeadGlyph[];
     }[] = [];
 
-    for (const cluster of snakeClusters) {
+    snakeClusters.forEach((cluster, ci) => {
       const root = resolve(cluster.to);
       if (!root) {
-        continue;
+        return;
       }
       const headPts: Point[] = [];
       for (const h of cluster.heads) {
@@ -131,17 +158,36 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
         }
       }
       if (headPts.length === 0) {
-        continue;
+        return;
       }
 
-      const color = colorOf(cluster.isHell, cluster.maxDrop);
-      const paths: string[] = [];
+      // Tube tints derived from the snake's own semantic color (meaning kept).
+      const base = colorOf(cluster.isHell, cluster.maxDrop);
+      const light = mixHex(
+        base,
+        BOARD_OVERLAY.snakeTubeLightTint,
+        BOARD_OVERLAY.snakeTubeLightMix,
+      );
+      const dark = mixHex(
+        base,
+        BOARD_OVERLAY.snakeTubeDarkTint,
+        BOARD_OVERLAY.snakeTubeDarkMix,
+      );
+
+      const bodies: Body[] = [];
       const heads: HeadGlyph[] = [];
+      const addBody = (from: Point, to: Point, fromHalf: number, toHalf: number) => {
+        bodies.push({
+          d: segment(from, to, fromHalf, toHalf),
+          gradId: `sg${ci}b${bodies.length}`,
+          ...axisOf(from, to, fromHalf, toHalf),
+        });
+      };
 
       if (headPts.length === 1) {
         // Lone snake: a single serpent from its head down to the destination.
         const h = headPts[0];
-        paths.push(segment(h, root, headHalf, tailHalf));
+        addBody(h, root, headHalf, tailHalf);
         const eye = eyeOf(h, root);
         heads.push({ x: h.x, y: h.y, eyeX: eye.x, eyeY: eye.y });
       } else {
@@ -156,16 +202,16 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
           x: root.x + (cx - root.x) * bias,
           y: root.y + (cy - root.y) * bias,
         };
-        paths.push(segment(junction, root, trunkHalf, tailHalf));
+        addBody(junction, root, trunkHalf, tailHalf);
         for (const h of headPts) {
-          paths.push(segment(h, junction, headHalf, neckHalf));
+          addBody(h, junction, headHalf, neckHalf);
           const eye = eyeOf(h, junction);
           heads.push({ x: h.x, y: h.y, eyeX: eye.x, eyeY: eye.y });
         }
       }
 
-      built.push({ id: cluster.id, color, paths, heads });
-    }
+      built.push({ id: cluster.id, headGradId: `sg${ci}h`, light, dark, bodies, heads });
+    });
     return built;
   }, [centers, realmCenters, cellSize, headHalf, tailHalf, trunkHalf, neckHalf]);
 
@@ -258,33 +304,79 @@ const SnakesLaddersLayerComponent: React.FC<SnakesLaddersLayerProps> = ({
         </React.Fragment>
       ))}
 
+      {/* Gradient defs: a cross-body tube gradient per segment + a sphere
+          gradient per serpent's heads (reused across all its heads). */}
+      <Defs>
+        {snakeShapes.map(snake => (
+          <React.Fragment key={`${snake.id}-defs`}>
+            {snake.bodies.map(body => (
+              <LinearGradient
+                key={body.gradId}
+                id={body.gradId}
+                gradientUnits="userSpaceOnUse"
+                x1={body.x1}
+                y1={body.y1}
+                x2={body.x2}
+                y2={body.y2}>
+                <Stop offset="0" stopColor={snake.dark} />
+                <Stop offset="0.5" stopColor={snake.light} />
+                <Stop offset="1" stopColor={snake.dark} />
+              </LinearGradient>
+            ))}
+            <RadialGradient
+              id={snake.headGradId}
+              cx="0.35"
+              cy="0.32"
+              r="0.75">
+              <Stop offset="0" stopColor={snake.light} />
+              <Stop offset="1" stopColor={snake.dark} />
+            </RadialGradient>
+          </React.Fragment>
+        ))}
+      </Defs>
+
+      {/* Soft drop shadow cast under every body for depth. */}
+      <G
+        transform={`translate(${BOARD_OVERLAY.snakeShadowDx} ${BOARD_OVERLAY.snakeShadowDy})`}
+        opacity={BOARD_OVERLAY.snakeShadowOpacity}>
+        {snakeShapes.map(snake =>
+          snake.bodies.map(body => (
+            <Path
+              key={`${body.gradId}-shadow`}
+              d={body.d}
+              fill={BOARD_OVERLAY.snakeShadowColor}
+            />
+          )),
+        )}
+      </G>
+
       {snakeShapes.map(snake => (
         <React.Fragment key={snake.id}>
-          {/* Shared trunk + branch necks (wide head -> thin tail), all one body. */}
-          {snake.paths.map((d, i) => (
+          {/* Shared trunk + branch necks, each filled as a rounded tube. */}
+          {snake.bodies.map(body => (
             <Path
-              key={`${snake.id}-body-${i}`}
-              d={d}
-              fill={snake.color}
-              opacity={BOARD_OVERLAY.snakeOpacity}
+              key={body.gradId}
+              d={body.d}
+              fill={`url(#${body.gradId})`}
+              opacity={BOARD_OVERLAY.snakeBodyOpacity}
             />
           ))}
-          {/* A rounded head + a single small eye at each source square. */}
+          {/* A shaded sphere head + a single small eye at each source square. */}
           {snake.heads.map((hd, i) => (
             <React.Fragment key={`${snake.id}-head-${i}`}>
               <Circle
                 cx={hd.x}
                 cy={hd.y}
                 r={headHalf}
-                fill={snake.color}
-                opacity={BOARD_OVERLAY.snakeOpacity}
+                fill={`url(#${snake.headGradId})`}
+                opacity={BOARD_OVERLAY.snakeBodyOpacity}
               />
               <Circle
                 cx={hd.eyeX}
                 cy={hd.eyeY}
                 r={Math.max(0.8, headHalf * 0.28)}
                 fill={BOARD_OVERLAY.snakeEye}
-                opacity={BOARD_OVERLAY.snakeOpacity}
+                opacity={BOARD_OVERLAY.snakeBodyOpacity}
               />
             </React.Fragment>
           ))}

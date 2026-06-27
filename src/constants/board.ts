@@ -157,4 +157,25 @@ export const BOARD_OVERLAY = {
   snakeJunctionBias: 0.4,
   /** Snake opacity — present but calm, not highlighting. */
   snakeOpacity: 0.55,
+
+  /**
+   * "Painted tube" shading (Phase: snake visual redesign). Each body is filled
+   * with a gradient running ACROSS it — a bright core flanked by darker edges —
+   * so the flat ribbon reads as a rounded, hand-painted serpent. The light/dark
+   * tints are blended from each snake's own semantic color (red hell / green by
+   * drop), so the meaning of the color is preserved; only the depth is new.
+   */
+  snakeTubeLightTint: '#FFF1DC', // warm ivory mixed in for the lit core
+  snakeTubeDarkTint: '#1C0F0A', // deep umber mixed in for the shaded edges
+  snakeTubeLightMix: 0.55, // how far the core is pushed toward the light tint
+  snakeTubeDarkMix: 0.42, // how far the edges are pushed toward the dark tint
+  /** Body fill opacity (more solid than before so the tube reads as painted). */
+  snakeBodyOpacity: 0.82,
+  /** Soft drop shadow cast under each body for depth. */
+  snakeShadowColor: '#160B07',
+  snakeShadowOpacity: 0.3,
+  snakeShadowDx: 1.6,
+  snakeShadowDy: 2.4,
+  /** Head sphere shading: a radial light core fading to the shaded edge. */
+  snakeHeadLightMix: 0.62,
 } as const;
