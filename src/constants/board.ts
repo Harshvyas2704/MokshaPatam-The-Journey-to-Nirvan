@@ -134,16 +134,18 @@ export const BOARD_OVERLAY = {
   /** Snake eye color (a small dark dot on the head). */
   snakeEye: '#241310',
   /** Body half-width at the head, relative to cell size (tapers to the tail). */
-  snakeHeadHalfRatio: 0.038,
+  snakeHeadHalfRatio: 0.052,
   /** Body half-width at the tail, relative to cell size (near a point). */
-  snakeTailHalfRatio: 0.007,
+  snakeTailHalfRatio: 0.013,
   /**
    * Multi-headed serpents (many squares sharing one destination): a thick shared
    * trunk runs from the destination to the heads' junction, then thinner necks
    * branch out to each head. Widths are multiples of the normal head half-width.
    */
-  snakeTrunkScale: 1.5, // trunk half-width vs. a head
-  snakeNeckScale: 0.5, // branch (neck) half-width where it joins the trunk
+  snakeTrunkScale: 1.6, // trunk half-width vs. a head
+  snakeNeckScale: 0.62, // branch (neck) half-width where it joins the trunk
+  /** Head size vs. the body half-width — the head is bigger than the neck. */
+  snakeHeadScale: 1.55,
   /** Lateral sway of a snake body relative to its head→tail distance. */
   snakeAmplitudeRatio: 0.055,
   /** How many half-undulations per cell of length (gentle). */
@@ -157,4 +159,25 @@ export const BOARD_OVERLAY = {
   snakeJunctionBias: 0.4,
   /** Snake opacity — present but calm, not highlighting. */
   snakeOpacity: 0.55,
+
+  /**
+   * "Painted tube" shading (Phase: snake visual redesign). Each body is filled
+   * with a gradient running ACROSS it — a bright core flanked by darker edges —
+   * so the flat ribbon reads as a rounded, hand-painted serpent. The light/dark
+   * tints are blended from each snake's own semantic color (red hell / green by
+   * drop), so the meaning of the color is preserved; only the depth is new.
+   */
+  snakeTubeLightTint: '#FFF1DC', // warm ivory mixed in for the lit core
+  snakeTubeDarkTint: '#1C0F0A', // deep umber mixed in for the shaded edges
+  snakeTubeLightMix: 0.55, // how far the core is pushed toward the light tint
+  snakeTubeDarkMix: 0.42, // how far the edges are pushed toward the dark tint
+  /** Body fill opacity (more solid than before so the tube reads as painted). */
+  snakeBodyOpacity: 0.82,
+  /** Soft drop shadow cast under each body for depth. */
+  snakeShadowColor: '#160B07',
+  snakeShadowOpacity: 0.3,
+  snakeShadowDx: 1.6,
+  snakeShadowDy: 2.4,
+  /** Head sphere shading: a radial light core fading to the shaded edge. */
+  snakeHeadLightMix: 0.62,
 } as const;

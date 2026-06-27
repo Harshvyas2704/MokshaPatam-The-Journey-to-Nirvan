@@ -4,8 +4,10 @@
 import {
   buildLadder,
   buildSnakeCenterlines,
+  buildSnakeHead,
   buildSnakePath,
   sampleSnakeCenterline,
+  snakeHeadEyes,
   type Point,
 } from '@/features/board/svg';
 import { snakeClusters } from '@/data';
@@ -64,6 +66,30 @@ describe('buildSnakeCenterlines', () => {
         expect(tail.y).toBeCloseTo(root.y, 5);
       }
     }
+  });
+});
+
+describe('buildSnakeHead / snakeHeadEyes', () => {
+  // Body connects below the head (toward y=200); the snout should point UP.
+  const head: Point = { x: 100, y: 100 };
+  const toward: Point = { x: 100, y: 200 };
+
+  it('builds a closed head path whose snout extends away from the body', () => {
+    const d = buildSnakeHead(head, toward, 10);
+    expect(d.startsWith('M')).toBe(true);
+    expect(d.trim().endsWith('Z')).toBe(true); // closed, fillable
+    // The very first anchor is the snout tip, ahead of the head, away from body.
+    const [mx, my] = d.slice(1).trim().split(/\s+/).map(Number);
+    expect(mx).toBeCloseTo(100, 5);
+    expect(my).toBeLessThan(100); // above the head, opposite the body
+  });
+
+  it('places two distinct eyes symmetric across the head axis', () => {
+    const [a, b] = snakeHeadEyes(head, toward, 10);
+    expect(a).not.toEqual(b);
+    // Symmetric about x=100 (the head's axis is vertical here).
+    expect(a.x + b.x).toBeCloseTo(200, 5);
+    expect(a.y).toBeCloseTo(b.y, 5);
   });
 });
 

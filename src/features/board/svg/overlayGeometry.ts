@@ -159,6 +159,84 @@ export function sampleSnakeCenterline(
   return points;
 }
 
+/** A smooth CLOSED cubic loop through a list of points (cardinal spline). */
+function closedSmoothPath(points: Point[]): string {
+  const n = points.length;
+  if (n === 0) {
+    return '';
+  }
+  let d = `M ${fmt(points[0].x)} ${fmt(points[0].y)}`;
+  for (let i = 0; i < n; i++) {
+    const p0 = points[(i - 1 + n) % n];
+    const p1 = points[i];
+    const p2 = points[(i + 1) % n];
+    const p3 = points[(i + 2) % n];
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${fmt(c1x)} ${fmt(c1y)} ${fmt(c2x)} ${fmt(c2y)} ${fmt(p2.x)} ${fmt(p2.y)}`;
+  }
+  return d + ' Z';
+}
+
+/**
+ * A serpent HEAD as a closed (fillable) SVG path: an egg/lozenge that points its
+ * snout AWAY from the body (along head←toward, extended past the head) and widens
+ * at the cheeks, so it reads as a real snake head rather than a bare circle.
+ * `half` is the head's base half-width; the snout/cheeks scale from it.
+ */
+export function buildSnakeHead(head: Point, toward: Point, half: number): string {
+  const dx = head.x - toward.x;
+  const dy = head.y - toward.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len; // forward: from the body out toward the snout
+  const uy = dy / len;
+  const px = -uy; // sideways
+  const py = ux;
+
+  const front = half * 1.75; // snout reaches ahead of the head point
+  const back = half * 1.2; // skull behind the head point
+  const wide = half * 1.35; // cheek half-width
+  const cheekShift = back * 0.15; // cheeks sit slightly behind center
+
+  const tip: Point = { x: head.x + ux * front, y: head.y + uy * front };
+  const rear: Point = { x: head.x - ux * back, y: head.y - uy * back };
+  const right: Point = {
+    x: head.x + px * wide - ux * cheekShift,
+    y: head.y + py * wide - uy * cheekShift,
+  };
+  const left: Point = {
+    x: head.x - px * wide - ux * cheekShift,
+    y: head.y - py * wide - uy * cheekShift,
+  };
+  return closedSmoothPath([tip, right, rear, left]);
+}
+
+/**
+ * The two eye positions for a head, set on the cheeks a little forward of center
+ * (toward the snout). `half` matches the value passed to `buildSnakeHead`.
+ */
+export function snakeHeadEyes(
+  head: Point,
+  toward: Point,
+  half: number,
+): [Point, Point] {
+  const dx = head.x - toward.x;
+  const dy = head.y - toward.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len;
+  const uy = dy / len;
+  const px = -uy;
+  const py = ux;
+  const fwd = half * 0.35; // forward of center
+  const side = half * 0.62; // out toward the cheeks
+  return [
+    { x: head.x + ux * fwd + px * side, y: head.y + uy * fwd + py * side },
+    { x: head.x + ux * fwd - px * side, y: head.y + uy * fwd - py * side },
+  ];
+}
+
 /**
  * Two parallel rails (offset `railOffset` either side of the base->top line)
  * plus rungs spaced roughly every `rungSpacing` px, capped at `maxRungs` so a

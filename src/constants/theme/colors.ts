@@ -1,24 +1,25 @@
 /**
  * Color palette — Traditional Indian Spiritual Heritage.
  *
- * Direction: saffron, deep maroon, muted gold, copper, ivory.
- * Deliberately avoids neon / bright gaming / casino aesthetics.
+ * Theme: "Indigo Temple Night" — a deep blue-violet night canvas with warm
+ * saffron/gold accents. The cool dark gives the painted serpents, the green/red
+ * cells, and the blue soul flame maximum contrast. The नरक (hell) zone keeps its
+ * own warm red surface (see OffboardCellView) — only the canvas turns cool.
  *
- * These are placeholder-but-intentional values for Phase 1. Exact tones can be
- * refined during the polish phase; the keys form the stable contract.
+ * Deliberately avoids neon / bright gaming / casino aesthetics.
  */
 export const colors = {
-  // Core heritage palette
+  // Core heritage accents (warm, glow against the night canvas)
   saffron: '#E58A2B',
-  maroon: '#5C1A1B',
-  gold: '#C9A227',
+  maroon: '#C2622E', // primary action / CTA — burnt saffron on the indigo canvas
+  gold: '#D4AE33',
   copper: '#B06A3B',
   ivory: '#F4ECD8',
 
-  // Surfaces / backgrounds
-  background: '#1C0F0A', // deep, warm near-black for a sacred, calm canvas
-  surface: '#2A1813',
-  surfaceMuted: '#3A241C',
+  // Surfaces / backgrounds — deep indigo "temple night"
+  background: '#0E1326', // deep indigo night for a sacred, calm canvas
+  surface: '#18223F',
+  surfaceMuted: '#232E52',
 
   // Text
   textPrimary: '#F4ECD8', // ivory
@@ -34,8 +35,12 @@ export const colors = {
   cellBg: '#F7F2E8', // default near-white tile
   cellBorder: '#D8C9AD',
   cellLadderBg: '#DCEAD3', // ladder destination — light green
+  cellLadderBgFrom: '#EAF4E1', // gradient top-left (lighter green)
+  cellLadderBgTo: '#C2DAB1', // gradient bottom-right (deeper green)
   cellLadderBorder: '#7FA86A',
   cellSnakeBg: '#F5D9D4', // snake head / start — light red
+  cellSnakeBgFrom: '#FCE8E4', // gradient top-left (lighter red)
+  cellSnakeBgTo: '#EDBEB5', // gradient bottom-right (deeper red)
   cellSnakeBorder: '#CC7A6E',
   cellText: '#3E2A1C', // dark ink for light tiles
   cellTextMuted: '#7A6048',
@@ -51,8 +56,8 @@ export const colors = {
   soulAura: '#4FA3FF',
 
   // Utility
-  border: '#4A3225',
-  overlay: 'rgba(12, 6, 4, 0.72)',
+  border: '#2E3A63', // indigo-tinted hairline
+  overlay: 'rgba(6, 9, 22, 0.74)', // cool modal backdrop
   transparent: 'transparent',
 } as const;
 
